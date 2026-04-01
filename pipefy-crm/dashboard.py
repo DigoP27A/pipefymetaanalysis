@@ -610,22 +610,54 @@ def pagina_funil(df):
     else:
         df_analise = df.copy()
 
-    def calcular_mortalidade(df_in, fases):
+    # Monta dicionário: card_id -> resultado
+    with open("dados/cards_raw.json", encoding="utf-8") as f:
+        cards_raw = json.load(f)
+
+    # Se filtro por responsável, limita os ids
+    ids_validos = set(df_analise["id"].astype(str).tolist())
+
+    # Monta histórico de fases com resultado de cada card
+    historico = []
+    for card in cards_raw:
+        card_id = str(card.get("id"))
+        if card_id not in ids_validos:
+            continue
+        fase_atual = card.get("current_phase", {}).get("name") if card.get("current_phase") else None
+        resultado = classificar_resultado(fase_atual)
+
+        # Pega apenas a última fase do funil que o card visitou
+        fases_visitadas = [
+            ph.get("phase", {}).get("name")
+            for ph in card.get("phases_history", [])
+            if ph.get("phase", {}).get("name") in FASES_FUNIL
+        ]
+
+        if fases_visitadas:
+            ultima_fase = fases_visitadas[-1]
+        else:
+            ultima_fase = fase_atual
+
+        historico.append({
+            "card_id": card_id,
+            "fase": ultima_fase,
+            "resultado": resultado,
+        })
+
+    df_historico = pd.DataFrame(historico).dropna(subset=["fase"])
+
+    def calcular_mortalidade(df_hist, fases):
         rows = []
         for fase in fases:
             fase_limpa = fase.split(". ")[-1] if ". " in fase else fase
-            
-            # Cards que estão ou estiveram nessa fase = fase_atual == fase
-            cards_na_fase = df_in[df_in["fase_atual"] == fase]
+            cards_na_fase = df_hist[df_hist["fase"] == fase]
             total = len(cards_na_fase)
             perdas = len(cards_na_fase[cards_na_fase["resultado"] == "Perda"])
             vendas = len(cards_na_fase[cards_na_fase["resultado"] == "Venda"])
             pausados = len(cards_na_fase[cards_na_fase["resultado"] == "Pausado"])
             andamento = len(cards_na_fase[cards_na_fase["resultado"] == "Em andamento"])
-
             taxa_perda = round(perdas / total * 100, 1) if total else 0
             taxa_venda = round(vendas / total * 100, 1) if total else 0
-
             rows.append({
                 "Fase": fase_limpa,
                 "Total": total,
@@ -638,7 +670,7 @@ def pagina_funil(df):
             })
         return pd.DataFrame(rows)
 
-    df_mort = calcular_mortalidade(df_analise, FASES_FUNIL)
+    df_mort = calcular_mortalidade(df_historico, FASES_FUNIL)
     df_mort_valido = df_mort[df_mort["Total"] > 0]
 
     if df_mort_valido.empty:
@@ -649,7 +681,8 @@ def pagina_funil(df):
     total_entrada = df_mort_valido.iloc[0]["Total"] if len(df_mort_valido) else 0
     maior_gargalo = df_mort_valido.loc[df_mort_valido["Taxa de Perda (%)"].idxmax(), "Fase"]
     maior_taxa = df_mort_valido["Taxa de Perda (%)"].max()
-    total_perdas = df_mort_valido["Perda"].sum()
+    # Total de perdas único — conta cards distintos com resultado Perda
+    total_perdas = len(df_analise[df_analise["resultado"] == "Perda"])
 
     c1, c2, c3 = st.columns(3)
     with c1:
