@@ -2175,6 +2175,1118 @@ def pagina_cross_selling(df):
     )
 
 # ============================================================
+# PÁGINA — TAMANHO DE EMPRESA
+# Adicione esta função ao dashboard.py
+# No menu da sidebar adicione: "🏭  Tamanho de Empresa"
+# No main adicione: elif "Tamanho" in pagina: pagina_tamanho_empresa(df)
+# ============================================================
+
+def pagina_tamanho_empresa(df):
+    from datetime import datetime
+
+    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🏭 Tamanho de Empresa</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Ticket médio, volume e conversão por tamanho de empresa</p>", unsafe_allow_html=True)
+
+    with open("dados/cards_raw.json", encoding="utf-8") as f:
+        cards_raw = json.load(f)
+
+    COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
+    ORDEM_TAMANHO = ["Pessoa física", "Pequena", "Média", "Grande"]
+
+    def parse_lista(x):
+        if not x or isinstance(x, float): return []
+        if isinstance(x, str) and x.startswith("["):
+            try: return json.loads(x)
+            except: return [x]
+        return [x]
+
+    def parse_valor(v):
+        if not v: return None
+        try:
+            s = str(v).strip()
+            # Formato BR: 3.985,00 → remove pontos, troca vírgula por ponto
+            s = s.replace(".", "").replace(",", ".")
+            return float(s)
+        except:
+            return None
+
+    def get_ciclo(dt):
+        if dt is None: return "⚪ Fora dos ciclos"
+        if datetime(2025, 10, 1) <= dt <= datetime(2025, 12, 31, 23, 59, 59):
+            return "🔵 Ciclo 1 (Out-Dez 2025)"
+        elif datetime(2026, 1, 1) <= dt <= datetime(2026, 3, 31, 23, 59, 59):
+            return "🟣 Ciclo 2 (Jan-Mar 2026)"
+        elif datetime(2026, 4, 1) <= dt <= datetime(2026, 6, 30, 23, 59, 59):
+            return "🟡 Ciclo 3 (Abr-Jun 2026)"
+        return "⚪ Fora dos ciclos"
+
+    # -------------------------------------------------------
+    # Monta DataFrame com TODOS os cards (não só vendas)
+    # para calcular conversão por tamanho
+    # -------------------------------------------------------
+    linhas = []
+    for card in cards_raw:
+        card_id = str(card.get("id"))
+        fase_atual = card.get("current_phase", {}).get("name") if card.get("current_phase") else None
+        resultado = classificar_resultado(fase_atual)
+        responsaveis = [a["name"].strip() for a in card.get("assignees", [])]
+
+        tamanho = None
+        valor_proposta = None
+        coords = []
+        canal = None
+        item_carta = None
+
+        for campo in card.get("fields", []):
+            label = campo.get("field", {}).get("label") or campo.get("name", "")
+            valor = campo.get("value")
+            if label == "Tamanho da empresa":
+                tamanho = valor
+            elif label == "Valor da proposta":
+                valor_proposta = parse_valor(valor)
+            elif label == "Coordenação":
+                coords = [c.strip() for c in parse_lista(valor) if c.strip() in COORDENACOES]
+            elif label == "Canal de aquisição":
+                canal = valor
+            elif label == "Ítem de carta":
+                item_carta = valor
+
+        if not tamanho:
+            continue
+
+        # Data de venda para ciclo
+        data_venda = None
+        updated_at_raw = card.get("updated_at")
+        try:
+            updated_at = datetime.strptime(updated_at_raw[:19], "%Y-%m-%dT%H:%M:%S") if updated_at_raw else None
+        except:
+            updated_at = None
+
+        if resultado == "Venda":
+            for ph in card.get("phases_history", []):
+                if ph.get("phase", {}).get("name") == "Venda":
+                    fit = ph.get("firstTimeIn")
+                    if fit:
+                        try:
+                            data_venda = datetime.strptime(fit[:19], "%Y-%m-%dT%H:%M:%S")
+                        except:
+                            pass
+
+        ciclo = get_ciclo(data_venda if data_venda else updated_at)
+
+        for resp in (responsaveis if responsaveis else ["Sem responsável"]):
+            linhas.append({
+                "card_id": card_id,
+                "resultado": resultado,
+                "tamanho": tamanho.strip(),
+                "valor_proposta": valor_proposta,
+                "coordenacoes": ", ".join(coords) if coords else "Sem coordenação",
+                "canal": canal if canal else "Não informado",
+                "item_carta": item_carta,
+                "responsavel": resp,
+                "ciclo": ciclo,
+                "data_venda": data_venda,
+            })
+
+    df_tam = pd.DataFrame(linhas)
+
+    if df_tam.empty:
+        st.error("Nenhum dado de tamanho de empresa encontrado.")
+        return
+
+    # -------------------------------------------------------
+    # FILTRO DE CICLO
+    # -------------------------------------------------------
+    CICLOS = [
+        "Todos os ciclos",
+        "🔵 Ciclo 1 (Out-Dez 2025)",
+        "🟣 Ciclo 2 (Jan-Mar 2026)",
+        "🟡 Ciclo 3 (Abr-Jun 2026)",
+        "⚪ Fora dos ciclos",
+    ]
+
+    ciclo_sel = st.radio("Filtrar por ciclo:", CICLOS, horizontal=True, key="tam_ciclo")
+    if ciclo_sel != "Todos os ciclos":
+        df_tam = df_tam[df_tam["ciclo"] == ciclo_sel]
+
+    if df_tam.empty:
+        st.warning("Nenhum dado para esse ciclo.")
+        return
+
+    df_unique = df_tam.drop_duplicates(subset=["card_id"])
+
+    # -------------------------------------------------------
+    # KPIs GERAIS
+    # -------------------------------------------------------
+    df_vendas = df_unique[df_unique["resultado"] == "Venda"]
+    total_vendas = len(df_vendas)
+    ticket_medio_geral = df_vendas["valor_proposta"].mean()
+    ticket_medio_fmt = f"R$ {ticket_medio_geral:,.0f}".replace(",", ".") if pd.notna(ticket_medio_geral) else "N/A"
+    receita_total = df_vendas["valor_proposta"].sum()
+    receita_fmt = f"R$ {receita_total:,.0f}".replace(",", ".") if pd.notna(receita_total) else "N/A"
+    tamanho_mais_vendas = df_vendas["tamanho"].value_counts().idxmax() if not df_vendas.empty else "-"
+    maior_ticket_tam = df_vendas.groupby("tamanho")["valor_proposta"].mean().idxmax() if not df_vendas["valor_proposta"].isna().all() else "-"
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    for col, label, val, sub, cor in [
+        (c1, "Total de Vendas", total_vendas, "com tamanho informado", "#22c55e"),
+        (c2, "Ticket Médio Geral", ticket_medio_fmt, "média de todas as vendas", "#3b82f6"),
+        (c3, "Receita Total", receita_fmt, "soma das propostas", "#f59e0b"),
+        (c4, "Maior Ticket Médio", maior_ticket_tam, "segmento com maior valor médio", "#8b5cf6"),
+    ]:
+        with col:
+            st.markdown(f"""<div class="metric-card" style="border-top:3px solid {cor}">
+                <div class="label">{label}</div>
+                <div class="value" style="color:{cor};font-size:{'28px' if len(str(val)) > 6 else '36px'}">{val}</div>
+                <div class="sub">{sub}</div>
+            </div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # -------------------------------------------------------
+    # ANÁLISE PRINCIPAL — TICKET MÉDIO POR TAMANHO
+    # -------------------------------------------------------
+    st.markdown("<div class='section-title'>💰 Ticket Médio por Tamanho de Empresa</div>", unsafe_allow_html=True)
+
+    ticket_tam = df_vendas.groupby("tamanho").agg(
+        Vendas=("card_id", "count"),
+        Ticket_Medio=("valor_proposta", "mean"),
+        Receita_Total=("valor_proposta", "sum"),
+        Com_Valor=("valor_proposta", lambda x: x.notna().sum()),
+    ).reset_index()
+    ticket_tam["Ticket_Medio"] = ticket_tam["Ticket_Medio"].round(0)
+    ticket_tam["Receita_Total"] = ticket_tam["Receita_Total"].round(0)
+
+    # Ordena pela ordem lógica de tamanho
+    ticket_tam["ordem"] = ticket_tam["tamanho"].apply(
+        lambda x: ORDEM_TAMANHO.index(x) if x in ORDEM_TAMANHO else 99
+    )
+    ticket_tam = ticket_tam.sort_values("ordem").drop(columns="ordem")
+
+    c1, c2 = st.columns([1.4, 1])
+    with c1:
+        fig = px.bar(
+            ticket_tam,
+            x="tamanho",
+            y="Ticket_Medio",
+            color="Ticket_Medio",
+            color_continuous_scale=["#1c3a1c", "#16a34a", "#86efac"],
+            text="Ticket_Medio",
+            labels={"tamanho": "", "Ticket_Medio": "Ticket Médio (R$)"},
+            category_orders={"tamanho": ORDEM_TAMANHO},
+        )
+        fig.update_traces(
+            texttemplate="R$ %{text:,.0f}",
+            textfont_color="white",
+            textposition="outside",
+        )
+        fig.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+        st.plotly_chart(fig, use_container_width=True, key="tam_ticket_bar")
+
+    with c2:
+        tabela_ticket = ticket_tam.copy()
+        tabela_ticket["Ticket Médio"] = tabela_ticket["Ticket_Medio"].apply(
+            lambda x: f"R$ {x:,.0f}".replace(",", ".") if pd.notna(x) else "N/A"
+        )
+        tabela_ticket["Receita Total"] = tabela_ticket["Receita_Total"].apply(
+            lambda x: f"R$ {x:,.0f}".replace(",", ".") if pd.notna(x) else "N/A"
+        )
+        tabela_ticket["% Com Valor"] = (tabela_ticket["Com_Valor"] / tabela_ticket["Vendas"] * 100).round(1).astype(str) + "%"
+        st.dataframe(
+            tabela_ticket[["tamanho", "Vendas", "Ticket Médio", "Receita Total", "% Com Valor"]]
+                .rename(columns={"tamanho": "Tamanho"}),
+            use_container_width=True,
+            height=250,
+            hide_index=True,
+        )
+
+    # -------------------------------------------------------
+    # VOLUME DE LEADS E CONVERSÃO POR TAMANHO
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📊 Volume de Leads e Conversão por Tamanho</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Considera todos os leads com tamanho informado, não apenas os vendidos.</p>", unsafe_allow_html=True)
+
+    conv_tam = df_unique.groupby(["tamanho", "resultado"]).size().unstack(fill_value=0)
+    for col in CORES:
+        if col not in conv_tam.columns:
+            conv_tam[col] = 0
+    conv_tam = conv_tam[list(CORES.keys())]
+    conv_tam["Total"] = conv_tam.sum(axis=1)
+    conv_tam["Taxa de Conversão (%)"] = (conv_tam["Venda"] / conv_tam["Total"] * 100).round(1)
+    conv_tam = conv_tam.reset_index()
+    conv_tam["ordem"] = conv_tam["tamanho"].apply(lambda x: ORDEM_TAMANHO.index(x) if x in ORDEM_TAMANHO else 99)
+    conv_tam = conv_tam.sort_values("ordem").drop(columns="ordem")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        df_melt = conv_tam.melt(id_vars="tamanho", value_vars=list(CORES.keys()), var_name="Resultado", value_name="Leads")
+        fig2 = px.bar(df_melt, x="tamanho", y="Leads", color="Resultado",
+                      color_discrete_map=CORES, barmode="stack",
+                      category_orders={"tamanho": ORDEM_TAMANHO},
+                      labels={"tamanho": "", "Leads": "Leads"})
+        fig2.update_layout(**PLOTLY_LAYOUT)
+        st.plotly_chart(fig2, use_container_width=True, key="tam_volume_bar")
+
+    with c2:
+        fig3 = px.bar(
+            conv_tam.sort_values("Taxa de Conversão (%)"),
+            x="Taxa de Conversão (%)", y="tamanho", orientation="h",
+            color="Taxa de Conversão (%)",
+            color_continuous_scale=["#1c3a1c", "#16a34a", "#86efac"],
+            text="Taxa de Conversão (%)",
+            labels={"tamanho": ""}
+        )
+        fig3.update_traces(texttemplate="%{text}%", textfont_color="white")
+        fig3.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+        st.plotly_chart(fig3, use_container_width=True, key="tam_conv_bar")
+
+    # -------------------------------------------------------
+    # TICKET MÉDIO POR TAMANHO × COORDENAÇÃO
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>🏢 Ticket Médio por Tamanho × Coordenação</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Apenas vendas. Revela qual coordenação performa melhor em cada segmento.</p>", unsafe_allow_html=True)
+
+    linhas_coord = []
+    for _, row in df_vendas.iterrows():
+        coords = [c.strip() for c in row["coordenacoes"].split(",") if c.strip() in COORDENACOES]
+        if not coords:
+            coords = ["Sem coordenação"]
+        for coord in coords:
+            linhas_coord.append({
+                "tamanho": row["tamanho"],
+                "coordenacao": coord,
+                "valor_proposta": row["valor_proposta"],
+            })
+
+    df_coord_tam = pd.DataFrame(linhas_coord)
+    df_coord_tam = df_coord_tam[df_coord_tam["coordenacao"].isin(COORDENACOES)]
+
+    if not df_coord_tam.empty:
+        pivot = df_coord_tam.groupby(["tamanho", "coordenacao"])["valor_proposta"].mean().round(0).unstack(fill_value=0)
+        pivot = pivot.reindex([t for t in ORDEM_TAMANHO if t in pivot.index])
+
+        fig4 = px.imshow(
+            pivot,
+            color_continuous_scale=["#0f172a", "#1c3a1c", "#16a34a", "#86efac"],
+            labels={"x": "Coordenação", "y": "Tamanho", "color": "Ticket Médio (R$)"},
+            aspect="auto",
+            text_auto=True,
+        )
+        fig4.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=True)
+        fig4.update_traces(textfont_color="white")
+        st.plotly_chart(fig4, use_container_width=True, key="tam_coord_heatmap")
+
+    # -------------------------------------------------------
+    # DISTRIBUIÇÃO DE VALORES — BOX PLOT
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📦 Distribuição dos Valores por Tamanho</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Dispersão dos valores de proposta dentro de cada segmento. Caixas largas indicam alta variação de preço.</p>", unsafe_allow_html=True)
+
+    df_box = df_vendas[df_vendas["valor_proposta"].notna()].copy()
+    if not df_box.empty:
+        fig5 = px.box(
+            df_box,
+            x="tamanho",
+            y="valor_proposta",
+            color="tamanho",
+            color_discrete_sequence=["#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6"],
+            category_orders={"tamanho": ORDEM_TAMANHO},
+            labels={"tamanho": "", "valor_proposta": "Valor da Proposta (R$)"},
+            points="all",
+        )
+        fig5.update_layout(**PLOTLY_LAYOUT, showlegend=False)
+        st.plotly_chart(fig5, use_container_width=True, key="tam_box")
+
+    # -------------------------------------------------------
+    # CANAL DE AQUISIÇÃO × TAMANHO (só vendas)
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📡 Canal de Aquisição × Tamanho de Empresa</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Quais canais trazem cada tipo de empresa para a venda.</p>", unsafe_allow_html=True)
+
+    canal_tam = df_vendas.groupby(["canal", "tamanho"]).size().unstack(fill_value=0)
+    canal_tam = canal_tam.reindex(columns=[t for t in ORDEM_TAMANHO if t in canal_tam.columns])
+    canal_tam["Total"] = canal_tam.sum(axis=1)
+    canal_tam = canal_tam.sort_values("Total", ascending=False).drop(columns="Total")
+
+    if not canal_tam.empty:
+        fig6 = px.imshow(
+            canal_tam,
+            color_continuous_scale=["#0f172a", "#1e3a5f", "#3b82f6", "#93c5fd"],
+            labels={"x": "Tamanho", "y": "Canal", "color": "Vendas"},
+            aspect="auto",
+            text_auto=True,
+        )
+        fig6.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+        fig6.update_traces(textfont_color="white")
+        st.plotly_chart(fig6, use_container_width=True, key="tam_canal_heatmap")
+
+    # -------------------------------------------------------
+    # TABELA COMPLETA DE VENDAS COM VALOR
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📄 Lista de Vendas com Valor Informado</div>", unsafe_allow_html=True)
+
+    filtro_tam = st.selectbox(
+        "Filtrar por tamanho:",
+        ["Todos"] + [t for t in ORDEM_TAMANHO if t in df_vendas["tamanho"].values],
+        key="tam_filtro_lista"
+    )
+
+    df_lista = df_vendas[df_vendas["valor_proposta"].notna()].copy()
+    if filtro_tam != "Todos":
+        df_lista = df_lista[df_lista["tamanho"] == filtro_tam]
+
+    df_lista = df_lista.sort_values("valor_proposta", ascending=False)
+    df_lista["Valor"] = df_lista["valor_proposta"].apply(lambda x: f"R$ {x:,.0f}".replace(",", "."))
+    df_lista["Data Venda"] = df_lista["data_venda"].apply(lambda x: x.strftime("%d/%m/%Y") if x else "N/A")
+
+    st.dataframe(
+        df_lista[["tamanho", "canal", "coordenacoes", "Valor", "ciclo", "Data Venda", "responsavel"]]
+            .rename(columns={
+                "tamanho": "Tamanho",
+                "canal": "Canal",
+                "coordenacoes": "Coordenações",
+                "ciclo": "Ciclo",
+                "responsavel": "Responsável",
+            }),
+        use_container_width=True,
+        height=420,
+        hide_index=True,
+    )
+
+# ============================================================
+# PÁGINA — PANORAMA DE VENDAS
+# ============================================================
+
+def pagina_vendas(df):
+    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>💰 Panorama de Vendas</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Visão completa sobre todas as vendas realizadas</p>", unsafe_allow_html=True)
+
+    with open("dados/cards_raw.json", encoding="utf-8") as f:
+        cards_raw = json.load(f)
+
+    from datetime import datetime
+
+    def parse_lista(x):
+        if not x or isinstance(x, float): return []
+        if isinstance(x, str) and x.startswith("["):
+            try: return json.loads(x)
+            except: return [x]
+        return [x]
+
+    def get_ciclo(dt):
+        if dt is None: return "⚪ Fora dos ciclos"
+        if datetime(2025, 10, 1) <= dt <= datetime(2025, 12, 31, 23, 59, 59):
+            return "🔵 Ciclo 1 (Out-Dez 2025)"
+        elif datetime(2026, 1, 1) <= dt <= datetime(2026, 3, 31, 23, 59, 59):
+            return "🟣 Ciclo 2 (Jan-Mar 2026)"
+        elif datetime(2026, 4, 1) <= dt <= datetime(2026, 6, 30, 23, 59, 59):
+            return "🟡 Ciclo 3 (Abr-Jun 2026)"
+        return "⚪ Fora dos ciclos"
+
+    COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
+
+    linhas = []
+    for card in cards_raw:
+        fase_atual = card.get("current_phase", {}).get("name") if card.get("current_phase") else None
+        if fase_atual != "Venda":
+            continue
+
+        card_id = str(card.get("id"))
+        responsaveis = [a["name"].strip() for a in card.get("assignees", [])]
+
+        canal = None
+        coords = []
+        valor_proposta = None
+        item_carta = None
+        nome_lead = None
+        empresa = None
+        tamanho = None
+
+        for campo in card.get("fields", []):
+            label = campo.get("field", {}).get("label") or campo.get("name", "")
+            valor = campo.get("value")
+            if label == "Canal de aquisição" and not canal:
+                canal = valor
+            elif label and "coord" in label.lower():
+                coords = [c.strip() for c in parse_lista(valor)]
+            elif label == "Valor da proposta" and not valor_proposta:
+                valor_proposta = valor
+            elif label == "Ítem de carta" and not item_carta:
+                item_carta = valor
+            elif label == "Nome do lead" and not nome_lead:
+                nome_lead = valor
+            elif label == "Empresa" and not empresa:
+                empresa = valor
+            elif label == "Tamanho da empresa" and not tamanho:
+                tamanho = valor
+
+        data_venda = None
+        for ph in card.get("phases_history", []):
+            if ph.get("phase", {}).get("name") == "Venda":
+                fit = ph.get("firstTimeIn")
+                if fit:
+                    try:
+                        data_venda = datetime.strptime(fit[:19], "%Y-%m-%dT%H:%M:%S")
+                    except: pass
+
+        ciclo = get_ciclo(data_venda)
+        is_fidelizacao = canal and "fideliz" in canal.lower() if canal else False
+
+        valor_num = None
+        if valor_proposta:
+            try:
+                v = str(valor_proposta).replace(".", "").replace(",", ".").strip()
+                valor_num = float(v)
+            except: pass
+
+        linhas.append({
+            "card_id": card_id,
+            "titulo": card.get("title"),
+            "canal": canal if canal else "Não informado",
+            "coordenacoes": ", ".join(coords) if coords else "Sem coordenação",
+            "item_carta": item_carta,
+            "valor_proposta": valor_num,
+            "data_venda": data_venda,
+            "ciclo": ciclo,
+            "is_fidelizacao": is_fidelizacao,
+            "responsavel": ", ".join(responsaveis),
+        })
+
+    df_vendas = pd.DataFrame(linhas)
+
+    if df_vendas.empty:
+        st.error("Nenhuma venda encontrada.")
+        return
+
+    # Filtro de ciclo
+    CICLOS = ["Todos os ciclos", "🔵 Ciclo 1 (Out-Dez 2025)", "🟣 Ciclo 2 (Jan-Mar 2026)", "🟡 Ciclo 3 (Abr-Jun 2026)", "⚪ Fora dos ciclos"]
+    ciclo_sel = st.radio("Filtrar por ciclo:", CICLOS, horizontal=True, key="vendas_ciclo")
+    if ciclo_sel != "Todos os ciclos":
+        df_vendas = df_vendas[df_vendas["ciclo"] == ciclo_sel]
+
+    total = len(df_vendas)
+    if total == 0:
+        st.warning("Nenhuma venda neste ciclo.")
+        return
+
+    fidelizacoes = int(df_vendas["is_fidelizacao"].sum())
+    nao_fidelizacoes = total - fidelizacoes
+    pct_fidelizacao = round(fidelizacoes / total * 100, 1)
+    valor_total = df_vendas["valor_proposta"].sum()
+    valor_medio = df_vendas["valor_proposta"].mean()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # KPIs
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #22c55e">
+            <div class="label">Total de Vendas</div>
+            <div class="value" style="color:#22c55e">{total}</div>
+            <div class="sub">cards na fase Venda</div>
+        </div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #8b5cf6">
+            <div class="label">Fidelizações</div>
+            <div class="value" style="color:#8b5cf6">{fidelizacoes}</div>
+            <div class="sub">{pct_fidelizacao}% das vendas</div>
+        </div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #3b82f6">
+            <div class="label">Novas Aquisições</div>
+            <div class="value" style="color:#3b82f6">{nao_fidelizacoes}</div>
+            <div class="sub">{round(nao_fidelizacoes/total*100,1)}% das vendas</div>
+        </div>""", unsafe_allow_html=True)
+    with c4:
+        valor_fmt = f"R$ {valor_total:,.0f}".replace(",", ".") if pd.notna(valor_total) else "N/A"
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #f59e0b">
+            <div class="label">Receita Total</div>
+            <div class="value" style="color:#f59e0b;font-size:22px">{valor_fmt}</div>
+            <div class="sub">soma das propostas</div>
+        </div>""", unsafe_allow_html=True)
+    with c5:
+        medio_fmt = f"R$ {valor_medio:,.0f}".replace(",", ".") if pd.notna(valor_medio) else "N/A"
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #64748b">
+            <div class="label">Ticket Médio</div>
+            <div class="value" style="color:#94a3b8;font-size:22px">{medio_fmt}</div>
+            <div class="sub">valor médio por venda</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Fidelização vs Nova Aquisição
+    st.markdown("<div class='section-title'>🔄 Fidelização vs Nova Aquisição</div>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1, 1.5])
+    with c1:
+        df_fid = pd.DataFrame({"Tipo": ["Fidelização", "Nova Aquisição"], "Total": [fidelizacoes, nao_fidelizacoes]})
+        fig = px.pie(df_fid, names="Tipo", values="Total", hole=0.5,
+                     color="Tipo", color_discrete_map={"Fidelização": "#8b5cf6", "Nova Aquisição": "#3b82f6"})
+        fig.update_traces(textfont_color="white", textfont_size=13)
+        fig.update_layout(**PLOTLY_LAYOUT)
+        st.plotly_chart(fig, use_container_width=True, key="vendas_fid_pizza")
+
+    with c2:
+        df_fid_canais = df_vendas[df_vendas["is_fidelizacao"]]["canal"].value_counts().reset_index()
+        df_fid_canais.columns = ["Canal", "Total"]
+        if not df_fid_canais.empty:
+            fig2 = px.bar(df_fid_canais, x="Total", y="Canal", orientation="h",
+                          color="Total", color_continuous_scale=["#2e1065", "#7c3aed", "#c4b5fd"],
+                          text="Total", title="Tipos de Fidelização", labels={"Canal": ""})
+            fig2.update_traces(textfont_color="white", textposition="outside")
+            fig2.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+            fig2.update_yaxes(categoryorder="total ascending")
+            st.plotly_chart(fig2, use_container_width=True, key="vendas_fid_canais")
+
+    with c3:
+        st.markdown("<div class='section-title'>Detalhamento das Fidelizações</div>", unsafe_allow_html=True)
+        df_fid_lista = df_vendas[df_vendas["is_fidelizacao"]][["titulo", "canal", "coordenacoes", "ciclo"]].rename(columns={
+            "titulo": "Card", "canal": "Canal", "coordenacoes": "Coordenações", "ciclo": "Ciclo"})
+        st.dataframe(df_fid_lista, use_container_width=True, height=280)
+
+    # Canais de Aquisição
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📡 Canais de Aquisição das Vendas</div>", unsafe_allow_html=True)
+    canal_vendas = df_vendas.groupby("canal").agg(
+        Total=("card_id", "count"),
+        Fidelizacoes=("is_fidelizacao", "sum"),
+    ).reset_index()
+    canal_vendas["Novas Aquisições"] = canal_vendas["Total"] - canal_vendas["Fidelizacoes"]
+    canal_vendas["% do Total"] = (canal_vendas["Total"] / canal_vendas["Total"].sum() * 100).round(1)
+    canal_vendas = canal_vendas.sort_values("Total", ascending=False)
+
+    c1, c2 = st.columns([1.4, 1])
+    with c1:
+        fig3 = px.bar(canal_vendas, x="canal", y="Total",
+                      color="Total", color_continuous_scale=["#1c3a1c", "#16a34a", "#86efac"],
+                      text="Total", labels={"canal": "", "Total": "Vendas"})
+        fig3.update_traces(textfont_color="white", textposition="outside")
+        fig3.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False, xaxis_tickangle=-20)
+        st.plotly_chart(fig3, use_container_width=True, key="vendas_canal_bar")
+    with c2:
+        st.dataframe(canal_vendas.set_index("canal").style
+                     .background_gradient(subset=["Total"], cmap="Greens")
+                     .format({"% do Total": "{:.1f}%", "Fidelizacoes": "{:.0f}"}),
+                     use_container_width=True, height=320)
+
+    # Vendas por Coordenação
+    st.markdown("---")
+    st.markdown("<div class='section-title'>🏢 Vendas por Coordenação</div>", unsafe_allow_html=True)
+    linhas_coord = []
+    for _, row in df_vendas.iterrows():
+        coords = [c.strip() for c in row["coordenacoes"].split(",") if c.strip() in COORDENACOES]
+        if not coords: coords = ["Sem coordenação"]
+        for coord in coords:
+            linhas_coord.append({"coordenacao": coord, "is_fidelizacao": row["is_fidelizacao"]})
+
+    df_coord_vendas = pd.DataFrame(linhas_coord)
+    coord_analise = df_coord_vendas.groupby("coordenacao").agg(
+        Total=("coordenacao", "count"), Fidelizacoes=("is_fidelizacao", "sum")).reset_index()
+    coord_analise["Novas"] = coord_analise["Total"] - coord_analise["Fidelizacoes"]
+    coord_analise = coord_analise[coord_analise["coordenacao"].isin(COORDENACOES)].sort_values("Total", ascending=False)
+
+    c1, c2 = st.columns([1.4, 1])
+    with c1:
+        df_melt_coord = coord_analise.melt(id_vars="coordenacao", value_vars=["Fidelizacoes", "Novas"],
+                                            var_name="Tipo", value_name="Vendas")
+        fig4 = px.bar(df_melt_coord, x="coordenacao", y="Vendas", color="Tipo",
+                      color_discrete_map={"Fidelizacoes": "#8b5cf6", "Novas": "#3b82f6"},
+                      barmode="stack", text="Vendas", labels={"coordenacao": ""})
+        fig4.update_traces(textfont_color="white", textposition="inside")
+        fig4.update_layout(**PLOTLY_LAYOUT)
+        st.plotly_chart(fig4, use_container_width=True, key="vendas_coord_bar")
+    with c2:
+        st.dataframe(coord_analise.set_index("coordenacao"), use_container_width=True, height=280)
+
+    # Itens de Carta
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📋 Itens de Carta — Vendas e Taxa de Conversão</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Quantidade de vendas por serviço e taxa de conversão proposta → venda</p>", unsafe_allow_html=True)
+
+    itens_proposta = {}
+    itens_venda = {}
+    for card in cards_raw:
+        fase_atual = card.get("current_phase", {}).get("name") if card.get("current_phase") else None
+        resultado = classificar_resultado(fase_atual)
+        fases_visitadas = [ph.get("phase", {}).get("name") for ph in card.get("phases_history", [])]
+        chegou_proposta = any(f in fases_visitadas for f in ["6. Proposta comercial feita", "7. Follow-up", "Venda"])
+        if not chegou_proposta:
+            continue
+        item = None
+        for campo in card.get("fields", []):
+            label = campo.get("field", {}).get("label") or campo.get("name", "")
+            valor = campo.get("value")
+            if label == "Ítem de carta" and valor:
+                item = str(valor).strip()
+                break
+        if not item:
+            item = "Não informado"
+        itens_proposta[item] = itens_proposta.get(item, 0) + 1
+        if resultado == "Venda":
+            itens_venda[item] = itens_venda.get(item, 0) + 1
+
+    rows_itens = []
+    for item, total_prop in itens_proposta.items():
+        vendas_item = itens_venda.get(item, 0)
+        rows_itens.append({
+            "Item de Carta": item,
+            "Propostas": total_prop,
+            "Vendas": vendas_item,
+            "Taxa de Conversão (%)": round(vendas_item / total_prop * 100, 1) if total_prop else 0,
+        })
+
+    df_itens = pd.DataFrame(rows_itens).sort_values("Vendas", ascending=False)
+
+    c1, c2 = st.columns([1.4, 1])
+    with c1:
+        fig_itens = px.bar(df_itens.head(15).sort_values("Vendas"),
+                           x="Vendas", y="Item de Carta", orientation="h",
+                           color="Taxa de Conversão (%)",
+                           color_continuous_scale=["#1c3a1c", "#16a34a", "#86efac"],
+                           text="Vendas", labels={"Item de Carta": ""})
+        fig_itens.update_traces(textfont_color="white", textposition="outside")
+        fig_itens.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=True)
+        st.plotly_chart(fig_itens, use_container_width=True, key="vendas_itens_bar")
+    with c2:
+        df_taxa_itens = df_itens[df_itens["Propostas"] >= 2].sort_values("Taxa de Conversão (%)", ascending=False).head(15)
+        fig_taxa = px.bar(df_taxa_itens.sort_values("Taxa de Conversão (%)"),
+                          x="Taxa de Conversão (%)", y="Item de Carta", orientation="h",
+                          color="Taxa de Conversão (%)",
+                          color_continuous_scale=["#1c3a1c", "#16a34a", "#86efac"],
+                          text="Taxa de Conversão (%)", labels={"Item de Carta": ""})
+        fig_taxa.update_traces(texttemplate="%{text}%", textfont_color="white")
+        fig_taxa.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+        st.plotly_chart(fig_taxa, use_container_width=True, key="vendas_itens_taxa")
+
+    st.markdown("<div class='section-title'>Tabela Completa de Itens</div>", unsafe_allow_html=True)
+    st.dataframe(
+        df_itens.set_index("Item de Carta").style
+            .background_gradient(subset=["Vendas"], cmap="Greens")
+            .background_gradient(subset=["Taxa de Conversão (%)"], cmap="Blues")
+            .format({"Taxa de Conversão (%)": "{:.1f}%"}),
+        use_container_width=True, height=400
+    )
+
+    # Lista completa de vendas
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📄 Lista Completa de Vendas</div>", unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        filtro_canal = st.selectbox("Filtrar por canal:", ["Todos"] + sorted(df_vendas["canal"].unique().tolist()), key="vendas_filtro_canal")
+    with col2:
+        filtro_fid = st.selectbox("Filtrar por tipo:", ["Todos", "Fidelização", "Nova Aquisição"], key="vendas_filtro_fid")
+
+    df_lista = df_vendas.copy()
+    if filtro_canal != "Todos":
+        df_lista = df_lista[df_lista["canal"] == filtro_canal]
+    if filtro_fid == "Fidelização":
+        df_lista = df_lista[df_lista["is_fidelizacao"]]
+    elif filtro_fid == "Nova Aquisição":
+        df_lista = df_lista[~df_lista["is_fidelizacao"]]
+
+    df_lista["data_venda_fmt"] = df_lista["data_venda"].apply(lambda x: x.strftime("%d/%m/%Y") if x else "N/A")
+    df_lista["valor_fmt"] = df_lista["valor_proposta"].apply(lambda x: f"R$ {x:,.0f}".replace(",", ".") if pd.notna(x) else "N/A")
+
+    st.dataframe(
+        df_lista[["titulo", "canal", "coordenacoes", "ciclo", "data_venda_fmt", "valor_fmt", "responsavel"]]
+            .rename(columns={
+                "titulo": "Card", "canal": "Canal", "coordenacoes": "Coordenações",
+                "ciclo": "Ciclo", "data_venda_fmt": "Data da Venda",
+                "valor_fmt": "Valor", "responsavel": "Responsável"}),
+        use_container_width=True, height=450
+    )
+
+# ============================================================
+# PÁGINA — TAMANHO DE EMPRESA
+# Adicione esta função ao dashboard.py
+# No menu da sidebar adicione: "🏭  Tamanho de Empresa"
+# No main adicione: elif "Tamanho" in pagina: pagina_tamanho_empresa(df)
+# ============================================================
+
+def pagina_tamanho_empresa(df):
+    from datetime import datetime
+
+    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🏭 Tamanho de Empresa</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Ticket médio, volume e conversão por tamanho de empresa</p>", unsafe_allow_html=True)
+
+    with open("dados/cards_raw.json", encoding="utf-8") as f:
+        cards_raw = json.load(f)
+
+    COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
+    ORDEM_TAMANHO = ["Pessoa física", "Pequena", "Média", "Grande"]
+
+    def parse_lista(x):
+        if not x or isinstance(x, float): return []
+        if isinstance(x, str) and x.startswith("["):
+            try: return json.loads(x)
+            except: return [x]
+        return [x]
+
+    def parse_valor(v):
+        if not v: return None
+        try:
+            s = str(v).strip()
+            # Formato BR: 3.985,00 → remove pontos, troca vírgula por ponto
+            s = s.replace(".", "").replace(",", ".")
+            return float(s)
+        except:
+            return None
+
+    def get_ciclo(dt):
+        if dt is None: return "⚪ Fora dos ciclos"
+        if datetime(2025, 10, 1) <= dt <= datetime(2025, 12, 31, 23, 59, 59):
+            return "🔵 Ciclo 1 (Out-Dez 2025)"
+        elif datetime(2026, 1, 1) <= dt <= datetime(2026, 3, 31, 23, 59, 59):
+            return "🟣 Ciclo 2 (Jan-Mar 2026)"
+        elif datetime(2026, 4, 1) <= dt <= datetime(2026, 6, 30, 23, 59, 59):
+            return "🟡 Ciclo 3 (Abr-Jun 2026)"
+        return "⚪ Fora dos ciclos"
+
+    # -------------------------------------------------------
+    # Monta DataFrame com TODOS os cards (não só vendas)
+    # para calcular conversão por tamanho
+    # -------------------------------------------------------
+    linhas = []
+    for card in cards_raw:
+        card_id = str(card.get("id"))
+        fase_atual = card.get("current_phase", {}).get("name") if card.get("current_phase") else None
+        resultado = classificar_resultado(fase_atual)
+        responsaveis = [a["name"].strip() for a in card.get("assignees", [])]
+
+        tamanho = None
+        valor_proposta = None
+        coords = []
+        canal = None
+        item_carta = None
+
+        for campo in card.get("fields", []):
+            label = campo.get("field", {}).get("label") or campo.get("name", "")
+            valor = campo.get("value")
+            if label == "Tamanho da empresa":
+                tamanho = valor
+            elif label == "Valor da proposta":
+                valor_proposta = parse_valor(valor)
+            elif label == "Coordenação":
+                coords = [c.strip() for c in parse_lista(valor) if c.strip() in COORDENACOES]
+            elif label == "Canal de aquisição":
+                canal = valor
+            elif label == "Ítem de carta":
+                item_carta = valor
+
+        if not tamanho:
+            continue
+
+        # Data de venda para ciclo
+        data_venda = None
+        updated_at_raw = card.get("updated_at")
+        try:
+            updated_at = datetime.strptime(updated_at_raw[:19], "%Y-%m-%dT%H:%M:%S") if updated_at_raw else None
+        except:
+            updated_at = None
+
+        if resultado == "Venda":
+            for ph in card.get("phases_history", []):
+                if ph.get("phase", {}).get("name") == "Venda":
+                    fit = ph.get("firstTimeIn")
+                    if fit:
+                        try:
+                            data_venda = datetime.strptime(fit[:19], "%Y-%m-%dT%H:%M:%S")
+                        except:
+                            pass
+
+        ciclo = get_ciclo(data_venda if data_venda else updated_at)
+
+        for resp in (responsaveis if responsaveis else ["Sem responsável"]):
+            linhas.append({
+                "card_id": card_id,
+                "resultado": resultado,
+                "tamanho": tamanho.strip(),
+                "valor_proposta": valor_proposta,
+                "coordenacoes": ", ".join(coords) if coords else "Sem coordenação",
+                "canal": canal if canal else "Não informado",
+                "item_carta": item_carta,
+                "responsavel": resp,
+                "ciclo": ciclo,
+                "data_venda": data_venda,
+            })
+
+    df_tam = pd.DataFrame(linhas)
+
+    if df_tam.empty:
+        st.error("Nenhum dado de tamanho de empresa encontrado.")
+        return
+
+    # -------------------------------------------------------
+    # FILTRO DE CICLO
+    # -------------------------------------------------------
+    CICLOS = [
+        "Todos os ciclos",
+        "🔵 Ciclo 1 (Out-Dez 2025)",
+        "🟣 Ciclo 2 (Jan-Mar 2026)",
+        "🟡 Ciclo 3 (Abr-Jun 2026)",
+        "⚪ Fora dos ciclos",
+    ]
+
+    ciclo_sel = st.radio("Filtrar por ciclo:", CICLOS, horizontal=True, key="tam_ciclo")
+    if ciclo_sel != "Todos os ciclos":
+        df_tam = df_tam[df_tam["ciclo"] == ciclo_sel]
+
+    if df_tam.empty:
+        st.warning("Nenhum dado para esse ciclo.")
+        return
+
+    df_unique = df_tam.drop_duplicates(subset=["card_id"])
+
+    # -------------------------------------------------------
+    # KPIs GERAIS
+    # -------------------------------------------------------
+    df_vendas = df_unique[df_unique["resultado"] == "Venda"]
+    total_vendas = len(df_vendas)
+    ticket_medio_geral = df_vendas["valor_proposta"].mean()
+    ticket_medio_fmt = f"R$ {ticket_medio_geral:,.0f}".replace(",", ".") if pd.notna(ticket_medio_geral) else "N/A"
+    receita_total = df_vendas["valor_proposta"].sum()
+    receita_fmt = f"R$ {receita_total:,.0f}".replace(",", ".") if pd.notna(receita_total) else "N/A"
+    tamanho_mais_vendas = df_vendas["tamanho"].value_counts().idxmax() if not df_vendas.empty else "-"
+    maior_ticket_tam = df_vendas.groupby("tamanho")["valor_proposta"].mean().idxmax() if not df_vendas["valor_proposta"].isna().all() else "-"
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    for col, label, val, sub, cor in [
+        (c1, "Total de Vendas", total_vendas, "com tamanho informado", "#22c55e"),
+        (c2, "Ticket Médio Geral", ticket_medio_fmt, "média de todas as vendas", "#3b82f6"),
+        (c3, "Receita Total", receita_fmt, "soma das propostas", "#f59e0b"),
+        (c4, "Maior Ticket Médio", maior_ticket_tam, "segmento com maior valor médio", "#8b5cf6"),
+    ]:
+        with col:
+            st.markdown(f"""<div class="metric-card" style="border-top:3px solid {cor}">
+                <div class="label">{label}</div>
+                <div class="value" style="color:{cor};font-size:{'28px' if len(str(val)) > 6 else '36px'}">{val}</div>
+                <div class="sub">{sub}</div>
+            </div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # -------------------------------------------------------
+    # ANÁLISE PRINCIPAL — TICKET MÉDIO POR TAMANHO
+    # -------------------------------------------------------
+    st.markdown("<div class='section-title'>💰 Ticket Médio por Tamanho de Empresa</div>", unsafe_allow_html=True)
+
+    ticket_tam = df_vendas.groupby("tamanho").agg(
+        Vendas=("card_id", "count"),
+        Ticket_Medio=("valor_proposta", "mean"),
+        Receita_Total=("valor_proposta", "sum"),
+        Com_Valor=("valor_proposta", lambda x: x.notna().sum()),
+    ).reset_index()
+    ticket_tam["Ticket_Medio"] = ticket_tam["Ticket_Medio"].round(0)
+    ticket_tam["Receita_Total"] = ticket_tam["Receita_Total"].round(0)
+
+    # Ordena pela ordem lógica de tamanho
+    ticket_tam["ordem"] = ticket_tam["tamanho"].apply(
+        lambda x: ORDEM_TAMANHO.index(x) if x in ORDEM_TAMANHO else 99
+    )
+    ticket_tam = ticket_tam.sort_values("ordem").drop(columns="ordem")
+
+    c1, c2 = st.columns([1.4, 1])
+    with c1:
+        fig = px.bar(
+            ticket_tam,
+            x="tamanho",
+            y="Ticket_Medio",
+            color="Ticket_Medio",
+            color_continuous_scale=["#1c3a1c", "#16a34a", "#86efac"],
+            text="Ticket_Medio",
+            labels={"tamanho": "", "Ticket_Medio": "Ticket Médio (R$)"},
+            category_orders={"tamanho": ORDEM_TAMANHO},
+        )
+        fig.update_traces(
+            texttemplate="R$ %{text:,.0f}",
+            textfont_color="white",
+            textposition="outside",
+        )
+        fig.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+        st.plotly_chart(fig, use_container_width=True, key="tam_ticket_bar")
+
+    with c2:
+        tabela_ticket = ticket_tam.copy()
+        tabela_ticket["Ticket Médio"] = tabela_ticket["Ticket_Medio"].apply(
+            lambda x: f"R$ {x:,.0f}".replace(",", ".") if pd.notna(x) else "N/A"
+        )
+        tabela_ticket["Receita Total"] = tabela_ticket["Receita_Total"].apply(
+            lambda x: f"R$ {x:,.0f}".replace(",", ".") if pd.notna(x) else "N/A"
+        )
+        tabela_ticket["% Com Valor"] = (tabela_ticket["Com_Valor"] / tabela_ticket["Vendas"] * 100).round(1).astype(str) + "%"
+        st.dataframe(
+            tabela_ticket[["tamanho", "Vendas", "Ticket Médio", "Receita Total", "% Com Valor"]]
+                .rename(columns={"tamanho": "Tamanho"}),
+            use_container_width=True,
+            height=250,
+            hide_index=True,
+        )
+
+    # -------------------------------------------------------
+    # VOLUME DE LEADS E CONVERSÃO POR TAMANHO
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📊 Volume de Leads e Conversão por Tamanho</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Considera todos os leads com tamanho informado, não apenas os vendidos.</p>", unsafe_allow_html=True)
+
+    conv_tam = df_unique.groupby(["tamanho", "resultado"]).size().unstack(fill_value=0)
+    for col in CORES:
+        if col not in conv_tam.columns:
+            conv_tam[col] = 0
+    conv_tam = conv_tam[list(CORES.keys())]
+    conv_tam["Total"] = conv_tam.sum(axis=1)
+    conv_tam["Taxa de Conversão (%)"] = (conv_tam["Venda"] / conv_tam["Total"] * 100).round(1)
+    conv_tam = conv_tam.reset_index()
+    conv_tam["ordem"] = conv_tam["tamanho"].apply(lambda x: ORDEM_TAMANHO.index(x) if x in ORDEM_TAMANHO else 99)
+    conv_tam = conv_tam.sort_values("ordem").drop(columns="ordem")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        df_melt = conv_tam.melt(id_vars="tamanho", value_vars=list(CORES.keys()), var_name="Resultado", value_name="Leads")
+        fig2 = px.bar(df_melt, x="tamanho", y="Leads", color="Resultado",
+                      color_discrete_map=CORES, barmode="stack",
+                      category_orders={"tamanho": ORDEM_TAMANHO},
+                      labels={"tamanho": "", "Leads": "Leads"})
+        fig2.update_layout(**PLOTLY_LAYOUT)
+        st.plotly_chart(fig2, use_container_width=True, key="tam_volume_bar")
+
+    with c2:
+        fig3 = px.bar(
+            conv_tam.sort_values("Taxa de Conversão (%)"),
+            x="Taxa de Conversão (%)", y="tamanho", orientation="h",
+            color="Taxa de Conversão (%)",
+            color_continuous_scale=["#1c3a1c", "#16a34a", "#86efac"],
+            text="Taxa de Conversão (%)",
+            labels={"tamanho": ""}
+        )
+        fig3.update_traces(texttemplate="%{text}%", textfont_color="white")
+        fig3.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+        st.plotly_chart(fig3, use_container_width=True, key="tam_conv_bar")
+
+    # -------------------------------------------------------
+    # TICKET MÉDIO POR TAMANHO × COORDENAÇÃO
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>🏢 Ticket Médio por Tamanho × Coordenação</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Apenas vendas. Revela qual coordenação performa melhor em cada segmento.</p>", unsafe_allow_html=True)
+
+    linhas_coord = []
+    for _, row in df_vendas.iterrows():
+        coords = [c.strip() for c in row["coordenacoes"].split(",") if c.strip() in COORDENACOES]
+        if not coords:
+            coords = ["Sem coordenação"]
+        for coord in coords:
+            linhas_coord.append({
+                "tamanho": row["tamanho"],
+                "coordenacao": coord,
+                "valor_proposta": row["valor_proposta"],
+            })
+
+    df_coord_tam = pd.DataFrame(linhas_coord)
+    df_coord_tam = df_coord_tam[df_coord_tam["coordenacao"].isin(COORDENACOES)]
+
+    if not df_coord_tam.empty:
+        pivot = df_coord_tam.groupby(["tamanho", "coordenacao"])["valor_proposta"].mean().round(0).unstack(fill_value=0)
+        pivot = pivot.reindex([t for t in ORDEM_TAMANHO if t in pivot.index])
+
+        fig4 = px.imshow(
+            pivot,
+            color_continuous_scale=["#0f172a", "#1c3a1c", "#16a34a", "#86efac"],
+            labels={"x": "Coordenação", "y": "Tamanho", "color": "Ticket Médio (R$)"},
+            aspect="auto",
+            text_auto=True,
+        )
+        fig4.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=True)
+        fig4.update_traces(textfont_color="white")
+        st.plotly_chart(fig4, use_container_width=True, key="tam_coord_heatmap")
+
+    # -------------------------------------------------------
+    # DISTRIBUIÇÃO DE VALORES — BOX PLOT
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📦 Distribuição dos Valores por Tamanho</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Dispersão dos valores de proposta dentro de cada segmento. Caixas largas indicam alta variação de preço.</p>", unsafe_allow_html=True)
+
+    df_box = df_vendas[df_vendas["valor_proposta"].notna()].copy()
+    if not df_box.empty:
+        fig5 = px.box(
+            df_box,
+            x="tamanho",
+            y="valor_proposta",
+            color="tamanho",
+            color_discrete_sequence=["#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6"],
+            category_orders={"tamanho": ORDEM_TAMANHO},
+            labels={"tamanho": "", "valor_proposta": "Valor da Proposta (R$)"},
+            points="all",
+        )
+        fig5.update_layout(**PLOTLY_LAYOUT, showlegend=False)
+        st.plotly_chart(fig5, use_container_width=True, key="tam_box")
+
+    # -------------------------------------------------------
+    # CANAL DE AQUISIÇÃO × TAMANHO (só vendas)
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📡 Canal de Aquisição × Tamanho de Empresa</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748b;font-size:13px'>Quais canais trazem cada tipo de empresa para a venda.</p>", unsafe_allow_html=True)
+
+    canal_tam = df_vendas.groupby(["canal", "tamanho"]).size().unstack(fill_value=0)
+    canal_tam = canal_tam.reindex(columns=[t for t in ORDEM_TAMANHO if t in canal_tam.columns])
+    canal_tam["Total"] = canal_tam.sum(axis=1)
+    canal_tam = canal_tam.sort_values("Total", ascending=False).drop(columns="Total")
+
+    if not canal_tam.empty:
+        fig6 = px.imshow(
+            canal_tam,
+            color_continuous_scale=["#0f172a", "#1e3a5f", "#3b82f6", "#93c5fd"],
+            labels={"x": "Tamanho", "y": "Canal", "color": "Vendas"},
+            aspect="auto",
+            text_auto=True,
+        )
+        fig6.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
+        fig6.update_traces(textfont_color="white")
+        st.plotly_chart(fig6, use_container_width=True, key="tam_canal_heatmap")
+
+    # -------------------------------------------------------
+    # TABELA COMPLETA DE VENDAS COM VALOR
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>📄 Lista de Vendas com Valor Informado</div>", unsafe_allow_html=True)
+
+    filtro_tam = st.selectbox(
+        "Filtrar por tamanho:",
+        ["Todos"] + [t for t in ORDEM_TAMANHO if t in df_vendas["tamanho"].values],
+        key="tam_filtro_lista"
+    )
+
+    df_lista = df_vendas[df_vendas["valor_proposta"].notna()].copy()
+    if filtro_tam != "Todos":
+        df_lista = df_lista[df_lista["tamanho"] == filtro_tam]
+
+    df_lista = df_lista.sort_values("valor_proposta", ascending=False)
+    df_lista["Valor"] = df_lista["valor_proposta"].apply(lambda x: f"R$ {x:,.0f}".replace(",", "."))
+    df_lista["Data Venda"] = df_lista["data_venda"].apply(lambda x: x.strftime("%d/%m/%Y") if x else "N/A")
+
+    st.dataframe(
+        df_lista[["tamanho", "canal", "coordenacoes", "Valor", "ciclo", "Data Venda", "responsavel"]]
+            .rename(columns={
+                "tamanho": "Tamanho",
+                "canal": "Canal",
+                "coordenacoes": "Coordenações",
+                "ciclo": "Ciclo",
+                "responsavel": "Responsável",
+            }),
+        use_container_width=True,
+        height=420,
+        hide_index=True,
+    )
+
+# ============================================================
 # SIDEBAR + MAIN
 # ============================================================
 
@@ -2198,6 +3310,8 @@ def main():
 
         pagina = st.radio("", [
             "📊  Visão Geral",
+            "💰  Vendas",
+            "🏭  Tamanho de Empresa",
             "📈  Conversão Real",
             "🔻  Funil de Conversão",
             "🚧  Objeções",
@@ -2222,6 +3336,10 @@ def main():
 
     if "Visão Geral" in pagina:
         pagina_visao_geral(df)
+    elif "Vendas" in pagina:
+        pagina_vendas(df)
+    elif "Tamanho" in pagina:
+        pagina_tamanho_empresa(df)
     elif "Funil" in pagina:
         pagina_funil(df)
     elif "Objeções" in pagina:
