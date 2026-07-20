@@ -4,6 +4,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 import os
+from pathlib import Path
+
+# Diretório do próprio script — necessário porque o Streamlit Cloud roda com
+# cwd na raiz do repo, não em pipefy-crm/. Todos os caminhos de dados/assets
+# devem ser resolvidos a partir daqui.
+BASE_DIR = Path(__file__).parent
+CARDS_RAW_PATH = BASE_DIR / "dados" / "cards_raw.json"
 
 st.set_page_config(page_title="Fluxo Consultoria — CRM", layout="wide", page_icon="🟧")
 
@@ -370,7 +377,7 @@ def _data_referencia_do_card(card):
 
 @st.cache_data
 def carregar_dados():
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards = json.load(f)
 
     linhas = []
@@ -575,7 +582,7 @@ def pagina_objecoes(df):
     ]
 
     # Carrega histórico para saber quais cards passaram por diagnóstico ou além
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw_obj = json.load(f)
 
     ids_qualificados = set()
@@ -757,7 +764,7 @@ def pagina_tempo_fases(df_original):
     st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Tempo real que cada lead passou em cada etapa do funil</p>", unsafe_allow_html=True)
 
     # Carrega dados brutos para pegar phases_history
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards = json.load(f)
 
     FASES_COM_OPO = [
@@ -931,7 +938,7 @@ def pagina_funil(df):
         df_analise = df.copy()
 
     # Monta dicionário: card_id -> resultado
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     # Se filtro por responsável, limita os ids
@@ -1102,7 +1109,7 @@ def pagina_coordenacoes(df):
     st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🏢 Análise por Coordenação</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Objeções e conversão por coordenação e por responsável dentro de cada coordenação</p>", unsafe_allow_html=True)
 
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
@@ -1298,7 +1305,7 @@ def pagina_conversao(df):
     st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>📈 Taxa de Conversão Real</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Conversão calculada apenas sobre leads que chegaram à Proposta Comercial</p>", unsafe_allow_html=True)
 
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
@@ -1595,7 +1602,7 @@ def pagina_diagnostico(df):
     st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🔬 Diagnóstico</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Identificação de gargalos, padrões de perda e qualidade de qualificação</p>", unsafe_allow_html=True)
 
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
@@ -2156,7 +2163,7 @@ def pagina_cross_selling(df):
     st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🔀 Situação do Cross Selling</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Análise de leads qualificados por etapa do funil e quantos foram designados a mais de uma coordenação</p>", unsafe_allow_html=True)
 
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
@@ -2407,7 +2414,7 @@ def pagina_tamanho_empresa(df):
     st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🏭 Tamanho de Empresa</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Ticket médio, volume e conversão por tamanho de empresa</p>", unsafe_allow_html=True)
 
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
@@ -2787,7 +2794,7 @@ def pagina_vendas(df):
     st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>💰 Panorama de Vendas</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Visão completa sobre todas as vendas realizadas</p>", unsafe_allow_html=True)
 
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     from datetime import datetime
@@ -3134,7 +3141,7 @@ def pagina_tamanho_empresa(df):
     st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🏭 Tamanho de Empresa</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Ticket médio, volume e conversão por tamanho de empresa</p>", unsafe_allow_html=True)
 
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
@@ -3519,7 +3526,7 @@ def pagina_motivo_perda(df):
     <div class="page-sub">Diagnóstico completo dos motivos que fizeram o lead ser perdido</div>
     """, unsafe_allow_html=True)
 
-    with open("dados/cards_raw.json", encoding="utf-8") as f:
+    with open(CARDS_RAW_PATH, encoding="utf-8") as f:
         cards_raw = json.load(f)
 
     # -------------------------------------------------------
@@ -3949,12 +3956,11 @@ def pagina_motivo_perda(df):
 # ============================================================
 
 import base64
-from pathlib import Path
 
 def _fluxo_logo_html():
     """Renderiza o logo da Fluxo. Prefere o arquivo assets/fluxo_logo.(png|jpg|svg);
     se não existir, cai no SVG desenhado inline."""
-    assets = Path("assets")
+    assets = BASE_DIR / "assets"
     for nome, mime in [
         ("fluxo_logo.png", "image/png"),
         ("fluxo_logo.jpg", "image/jpeg"),
@@ -3989,8 +3995,8 @@ def _fluxo_logo_html():
 FLUXO_LOGO_SVG = _fluxo_logo_html()
 
 def main():
-    if not os.path.exists("dados/cards_raw.json"):
-        st.error("❌ Arquivo dados/cards_raw.json não encontrado. Rode o extrator.py primeiro.")
+    if not CARDS_RAW_PATH.exists():
+        st.error(f"❌ Arquivo {CARDS_RAW_PATH} não encontrado. Rode o extrator.py primeiro.")
         return
 
     df = carregar_dados()
