@@ -321,6 +321,50 @@ def page_header(icon: str, titulo: str, subtitulo: str = ""):
     """, unsafe_allow_html=True)
 
 # ============================================================
+# CICLOS / GESTÕES DA FLUXO
+# ============================================================
+# Gestão = 12 meses começando em 1º de outubro (ex: gestão 25/26 = out/2025–set/2026).
+# Cada gestão tem 4 ciclos de 3 meses:
+#   Ciclo 1: out–dez   Ciclo 2: jan–mar   Ciclo 3: abr–jun   Ciclo 4: jul–set
+
+FASES_TERMINAIS = ("Perdido", "Venda", "Pausado")
+
+def gestao_de(data):
+    """Retorna a gestão de uma data no formato 'YY/YY' (ex: '25/26')."""
+    if pd.isna(data):
+        return None
+    ano, mes = data.year, data.month
+    if mes >= 10:
+        return f"{ano % 100:02d}/{(ano + 1) % 100:02d}"
+    return f"{(ano - 1) % 100:02d}/{ano % 100:02d}"
+
+def ciclo_de(data):
+    """Retorna o número do ciclo (1–4) dentro da gestão."""
+    if pd.isna(data):
+        return None
+    m = data.month
+    if m in (10, 11, 12): return 1
+    if m in (1, 2, 3):    return 2
+    if m in (4, 5, 6):    return 3
+    return 4  # 7, 8, 9
+
+def _data_referencia_do_card(card):
+    """Data-âncora do card para filtro por período:
+    - se está em Perdido/Venda/Pausado: primeira entrada nessa fase terminal
+    - senão: data de criação do card
+    """
+    fase = card.get("current_phase", {}).get("name") if card.get("current_phase") else None
+    if fase in FASES_TERMINAIS:
+        entradas = [
+            ph.get("firstTimeIn")
+            for ph in card.get("phases_history", [])
+            if ph.get("phase", {}).get("name") == fase and ph.get("firstTimeIn")
+        ]
+        if entradas:
+            return max(entradas)
+    return card.get("created_at")
+
+# ============================================================
 # DADOS
 # ============================================================
 
@@ -338,6 +382,7 @@ def carregar_dados():
             "fechado": card.get("done"),
             "data_criacao": card.get("created_at"),
             "data_atualizacao": card.get("updated_at"),
+            "data_referencia": _data_referencia_do_card(card),
             "responsavel_raw": ", ".join([a["name"] for a in card.get("assignees", [])]),
         }
         for campo in card.get("fields", []):
@@ -349,9 +394,13 @@ def carregar_dados():
 
     df = pd.DataFrame(linhas)
     df["resultado"] = df["fase_atual"].apply(classificar_resultado)
-    df["data_criacao"] = pd.to_datetime(df["data_criacao"], unit="s", errors="coerce")
-    df["data_atualizacao"] = pd.to_datetime(df["data_atualizacao"], unit="s", errors="coerce")
+    df["data_criacao"] = pd.to_datetime(df["data_criacao"], errors="coerce", utc=True).dt.tz_localize(None)
+    df["data_atualizacao"] = pd.to_datetime(df["data_atualizacao"], errors="coerce", utc=True).dt.tz_localize(None)
+    df["data_referencia"] = pd.to_datetime(df["data_referencia"], errors="coerce", utc=True).dt.tz_localize(None)
+    df["gestao"] = df["data_referencia"].apply(gestao_de)
+    df["ciclo"] = df["data_referencia"].apply(ciclo_de)
     return df
+
 
 def classificar_resultado(fase):
     if fase == "Venda": return "Venda"
@@ -3473,6 +3522,49 @@ def pagina_motivo_perda(df):
     with open("dados/cards_raw.json", encoding="utf-8") as f:
         cards_raw = json.load(f)
 
+    # -------------------------------------------------------
+    # FILTRO POR GESTÃO E CICLO (ancorado na data em que virou Perdido)
+    # -------------------------------------------------------
+    gestoes_presentes = sorted(
+        {g for g in df.loc[df["resultado"] == "Perda", "gestao"].dropna().unique()},
+        key=lambda s: int(s.split("/")[0]),
+        reverse=True,
+    )
+    opcoes_gestao = ["Todas as gestões"] + gestoes_presentes
+    default_gestao = "25/26" if "25/26" in gestoes_presentes else opcoes_gestao[0]
+
+    gcol1, gcol2 = st.columns(2)
+    with gcol1:
+        st.selectbox(
+            "Gestão",
+            opcoes_gestao,
+            index=opcoes_gestao.index(default_gestao) if default_gestao in opcoes_gestao else 0,
+            key="mp_gestao_sel",
+            help="Filtra pelas perdas cujo lead entrou na fase Perdido dentro da gestão selecionada. Gestão vai de out–set.",
+        )
+    with gcol2:
+        if st.session_state["mp_gestao_sel"] != "Todas as gestões":
+            st.selectbox(
+                "Ciclo",
+                ["Toda a gestão", "Ciclo 1", "Ciclo 2", "Ciclo 3", "Ciclo 4"],
+                key="mp_ciclo_sel",
+                help="Ciclo 1 out–dez · Ciclo 2 jan–mar · Ciclo 3 abr–jun · Ciclo 4 jul–set.",
+            )
+        else:
+            st.markdown("<div style='color:#737373;font-size:12px;margin-top:34px'>Ciclo indisponível quando 'Todas as gestões' está selecionado</div>", unsafe_allow_html=True)
+            st.session_state.pop("mp_ciclo_sel", None)
+
+    gestao_sel = st.session_state["mp_gestao_sel"]
+    ciclo_sel = st.session_state.get("mp_ciclo_sel", "Toda a gestão")
+
+    df_periodo = df[df["resultado"] == "Perda"].copy()
+    if gestao_sel != "Todas as gestões":
+        df_periodo = df_periodo[df_periodo["gestao"] == gestao_sel]
+        if ciclo_sel != "Toda a gestão":
+            df_periodo = df_periodo[df_periodo["ciclo"] == int(ciclo_sel.split()[-1])]
+
+    ids_permitidos = set(df_periodo["id"].astype(str))
+
     COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
 
     def parse_lista(x):
@@ -3490,6 +3582,8 @@ def pagina_motivo_perda(df):
             continue
 
         card_id = str(card.get("id"))
+        if card_id not in ids_permitidos:
+            continue
         responsaveis = [a["name"].strip() for a in card.get("assignees", [])]
 
         motivo = None
@@ -3536,6 +3630,9 @@ def pagina_motivo_perda(df):
         fase_morte = fases_no_funil[-1] if fases_no_funil else "Não visitou funil"
         fase_morte_curta = fase_morte.split(". ")[-1] if ". " in fase_morte else fase_morte
 
+        passou_diagnostico = "4. Diagnóstico feito" in fases_visitadas
+        passou_precificacao = "5. Precificação/Aprovação em andamento" in fases_visitadas
+        passou_proposta = "6. Proposta comercial feita" in fases_visitadas
         chegou_proposta = any(f in fases_visitadas for f in ["6. Proposta comercial feita", "7. Follow-up"])
 
         for m in motivos_list:
@@ -3551,6 +3648,9 @@ def pagina_motivo_perda(df):
                 "resp_list": responsaveis if responsaveis else ["Sem responsável"],
                 "fase_morte": fase_morte_curta,
                 "chegou_proposta": chegou_proposta,
+                "passou_diagnostico": passou_diagnostico,
+                "passou_precificacao": passou_precificacao,
+                "passou_proposta": passou_proposta,
                 "tamanho": tamanho if tamanho else "Não informado",
                 "valor_proposta": valor_proposta,
                 "objecoes": objecoes,
@@ -3561,6 +3661,48 @@ def pagina_motivo_perda(df):
     if df_perda.empty:
         st.warning("Nenhum lead perdido encontrado.")
         return
+
+    # -------------------------------------------------------
+    # FILTRO POR ETAPA ATÉ ONDE O LEAD CHEGOU ANTES DE MORRER
+    # -------------------------------------------------------
+    FILTROS_ETAPA = {
+        "Todos os perdidos": None,
+        "Perdas pós-Diagnóstico": "passou_diagnostico",
+        "Perdas pós-Precificação": "passou_precificacao",
+        "Perdas pós-Proposta": "passou_proposta",
+    }
+    total_geral_cards = df_perda["card_id"].nunique()
+
+    fcol1, fcol2 = st.columns([2, 1])
+    with fcol1:
+        etapa_sel = st.radio(
+            "Recorte da análise",
+            list(FILTROS_ETAPA.keys()),
+            horizontal=True,
+            key="mp_filtro_etapa",
+            help="Filtra a página inteira para leads perdidos que passaram por determinada etapa antes de morrer.",
+        )
+    flag = FILTROS_ETAPA[etapa_sel]
+    if flag is not None:
+        df_perda = df_perda[df_perda[flag]].copy()
+
+    if df_perda.empty:
+        st.info(f"Nenhum lead perdido se encaixa no recorte '{etapa_sel}'.")
+        return
+
+    cards_no_recorte = df_perda["card_id"].nunique()
+    with fcol2:
+        st.markdown(
+            f"<div style='padding:10px 14px;background:{BG_CARD};border:1px solid {BORDER};"
+            f"border-radius:10px;text-align:right'>"
+            f"<span style='color:{TEXT_SECONDARY};font-size:12px'>Cards no recorte</span><br>"
+            f"<span style='color:{FLUXO_ORANGE};font-size:20px;font-weight:700'>{cards_no_recorte}</span>"
+            f"<span style='color:{TEXT_MUTED};font-size:12px'> de {total_geral_cards}</span>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     df_unique = df_perda.drop_duplicates(subset=["card_id"])
     total_perdidos = df_unique["card_id"].nunique()
@@ -3622,8 +3764,8 @@ def pagina_motivo_perda(df):
             ]
         )
         fig_pie.update_traces(textfont_color="#000", textfont_size=12, textinfo="percent")
-        fig_pie.update_layout(**PLOTLY_LAYOUT, height=440,
-                              legend=dict(orientation="v", x=1.05, y=0.5,
+        fig_pie.update_layout(**PLOTLY_LAYOUT, height=440)
+        fig_pie.update_layout(legend=dict(orientation="v", x=1.05, y=0.5,
                                           font=dict(color=TEXT_PRIMARY, size=11)))
         st.plotly_chart(fig_pie, use_container_width=True, key="mp_pie")
 
@@ -3806,21 +3948,45 @@ def pagina_motivo_perda(df):
 # SIDEBAR + MAIN
 # ============================================================
 
-FLUXO_LOGO_SVG = f"""
-<svg viewBox="0 0 240 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:200px;height:auto;">
-  <g fill="none" stroke="{FLUXO_ORANGE}" stroke-width="5" stroke-linecap="round">
-    <path d="M20 14 L20 86"/>
-    <path d="M220 14 L220 86"/>
-    <path d="M20 14 L58 14"/>
-    <path d="M182 14 L220 14"/>
-    <path d="M20 86 L58 86"/>
-    <path d="M182 86 L220 86"/>
-  </g>
-  <path d="M60 22 Q120 -6 180 22" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
-  <path d="M60 78 Q120 106 180 78" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
-  <text x="120" y="63" font-family="Inter, sans-serif" font-weight="800" font-size="38" text-anchor="middle" fill="{TEXT_PRIMARY}" letter-spacing="-1">Fluxo</text>
-</svg>
-"""
+import base64
+from pathlib import Path
+
+def _fluxo_logo_html():
+    """Renderiza o logo da Fluxo. Prefere o arquivo assets/fluxo_logo.(png|jpg|svg);
+    se não existir, cai no SVG desenhado inline."""
+    assets = Path("assets")
+    for nome, mime in [
+        ("fluxo_logo.png", "image/png"),
+        ("fluxo_logo.jpg", "image/jpeg"),
+        ("fluxo_logo.jpeg", "image/jpeg"),
+        ("fluxo_logo.webp", "image/webp"),
+        ("fluxo_logo.svg", "image/svg+xml"),
+    ]:
+        arquivo = assets / nome
+        if arquivo.exists():
+            b64 = base64.b64encode(arquivo.read_bytes()).decode("ascii")
+            return (
+                f'<img src="data:{mime};base64,{b64}" alt="Fluxo" '
+                f'style="width:100%;max-width:180px;height:auto;display:block;margin:0 auto;">'
+            )
+    # Fallback: SVG desenhado inline (caso o arquivo não esteja disponível)
+    return f"""
+    <svg viewBox="0 0 240 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:200px;height:auto;">
+      <g fill="none" stroke="{FLUXO_ORANGE}" stroke-width="5" stroke-linecap="round">
+        <path d="M20 14 L20 86"/>
+        <path d="M220 14 L220 86"/>
+        <path d="M20 14 L58 14"/>
+        <path d="M182 14 L220 14"/>
+        <path d="M20 86 L58 86"/>
+        <path d="M182 86 L220 86"/>
+      </g>
+      <path d="M60 22 Q120 -6 180 22" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
+      <path d="M60 78 Q120 106 180 78" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
+      <text x="120" y="63" font-family="Inter, sans-serif" font-weight="800" font-size="38" text-anchor="middle" fill="{TEXT_PRIMARY}" letter-spacing="-1">Fluxo</text>
+    </svg>
+    """
+
+FLUXO_LOGO_SVG = _fluxo_logo_html()
 
 def main():
     if not os.path.exists("dados/cards_raw.json"):
