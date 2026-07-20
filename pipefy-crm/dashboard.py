@@ -12,7 +12,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent
 CARDS_RAW_PATH = BASE_DIR / "dados" / "cards_raw.json"
 
-st.set_page_config(page_title="Fluxo Consultoria — CRM", layout="wide", page_icon="🟧")
+st.set_page_config(
+    page_title="Fluxo Consultoria — CRM",
+    layout="wide",
+    page_icon="🟧",
+    initial_sidebar_state="auto",
+)
 
 # ============================================================
 # TEMA — FLUXO (PRETO + LARANJA)
@@ -21,213 +26,301 @@ st.set_page_config(page_title="Fluxo Consultoria — CRM", layout="wide", page_i
 FLUXO_ORANGE = "#F7941D"
 FLUXO_ORANGE_LIGHT = "#FFB454"
 FLUXO_ORANGE_DARK = "#C67615"
-BG_BLACK = "#0A0A0A"
-BG_CARD = "#141414"
-BG_CARD_ELEVATED = "#1C1C1C"
-BORDER = "#262626"
-BORDER_LIGHT = "#3A3A3A"
-TEXT_PRIMARY = "#FAFAFA"
-TEXT_SECONDARY = "#A3A3A3"
-TEXT_MUTED = "#737373"
+BG_BLACK = "#0A0A0F"
+BG_CARD = "#14141C"
+BG_CARD_ELEVATED = "#1E1E28"
+BORDER = "#262632"
+BORDER_LIGHT = "#3A3A46"
+TEXT_PRIMARY = "#F4F4F7"
+TEXT_SECONDARY = "#9CA3AF"
+TEXT_MUTED = "#6B7280"
+
+SUCCESS = "#22C55E"
+DANGER = "#EF4444"
+WARNING = "#EAB308"
+INFO = "#0EA5E9"
 
 st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
 
-    * {{ font-family: 'Inter', sans-serif; }}
-    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
+    :root {{
+        --bg: {BG_BLACK};
+        --surface: {BG_CARD};
+        --surface-2: {BG_CARD_ELEVATED};
+        --border: {BORDER};
+        --border-strong: {BORDER_LIGHT};
+        --brand: {FLUXO_ORANGE};
+        --brand-soft: rgba(247,148,29,0.14);
+        --text: {TEXT_PRIMARY};
+        --text-2: {TEXT_SECONDARY};
+        --text-3: {TEXT_MUTED};
+        --success: {SUCCESS};
+        --danger: {DANGER};
+        --warning: {WARNING};
+        --info: {INFO};
+        --radius: 14px;
+        --radius-sm: 10px;
+        --gutter: clamp(12px, 2.5vw, 22px);
+    }}
+
+    /* ---------- RESET & BASE ---------- */
+    * {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; box-sizing: border-box; }}
+    html, body {{ overflow-x: hidden; }}
 
     .stApp {{
         background:
-            radial-gradient(1200px 600px at 85% -10%, rgba(247,148,29,0.06), transparent 60%),
-            radial-gradient(900px 500px at -10% 100%, rgba(247,148,29,0.04), transparent 60%),
-            {BG_BLACK};
+            radial-gradient(1200px 600px at 88% -8%, rgba(247,148,29,0.07), transparent 60%),
+            radial-gradient(900px 480px at -8% 100%, rgba(247,148,29,0.045), transparent 60%),
+            var(--bg);
     }}
 
-    /* SIDEBAR */
+    /* Container principal com padding fluido em vez do padrão do Streamlit */
+    .block-container {{
+        padding: clamp(1rem, 3vw, 2.5rem) clamp(0.6rem, 3vw, 2.5rem) 4rem !important;
+        max-width: 1400px;
+    }}
+
+    /* ---------- SIDEBAR ---------- */
     section[data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, #0d0d0d 0%, {BG_BLACK} 100%);
-        border-right: 1px solid {BORDER};
+        background: linear-gradient(180deg, #0e0e14 0%, var(--bg) 100%);
+        border-right: 1px solid var(--border);
     }}
-    section[data-testid="stSidebar"] * {{ color: {TEXT_PRIMARY} !important; }}
-    section[data-testid="stSidebar"] .stRadio label {{ color: {TEXT_PRIMARY} !important; font-size: 14px !important; }}
+    section[data-testid="stSidebar"] > div {{ padding-top: 0.5rem; }}
+    section[data-testid="stSidebar"] * {{ color: var(--text); }}
+    section[data-testid="stSidebar"] .stRadio label {{ color: var(--text) !important; font-size: 14px !important; }}
 
-    /* Radio menu de navegação — highlight laranja no selecionado */
     section[data-testid="stSidebar"] div[role="radiogroup"] > label {{
-        padding: 10px 12px;
-        border-radius: 10px;
-        margin: 2px 0;
+        padding: 12px 14px;
+        border-radius: var(--radius-sm);
+        margin: 3px 0;
         border: 1px solid transparent;
-        transition: all 0.15s ease;
+        transition: background 0.15s ease, border-color 0.15s ease;
+        min-height: 44px;
+        display: flex; align-items: center;
     }}
     section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
-        background: rgba(247,148,29,0.08);
-        border-color: rgba(247,148,29,0.25);
+        background: var(--brand-soft);
+        border-color: rgba(247,148,29,0.30);
     }}
     section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] {{
-        background: linear-gradient(90deg, rgba(247,148,29,0.18), rgba(247,148,29,0.05));
-        border-color: {FLUXO_ORANGE};
-        box-shadow: inset 3px 0 0 {FLUXO_ORANGE};
+        background: linear-gradient(90deg, rgba(247,148,29,0.22), rgba(247,148,29,0.05));
+        border-color: var(--brand);
+        box-shadow: inset 3px 0 0 var(--brand);
     }}
 
-    /* TIPOGRAFIA */
-    h1, h2, h3, h4, h5, h6 {{ color: {TEXT_PRIMARY}; letter-spacing: -0.01em; }}
-    h1 {{ font-weight: 800; }}
-    p, span, div {{ color: {TEXT_PRIMARY}; }}
+    /* ---------- TIPOGRAFIA ---------- */
+    h1, h2, h3, h4, h5, h6 {{ color: var(--text); letter-spacing: -0.015em; }}
+    h1 {{ font-weight: 800; font-size: clamp(22px, 3.8vw, 32px); line-height: 1.15; }}
+    h2 {{ font-weight: 700; font-size: clamp(18px, 2.8vw, 22px); }}
+    h3 {{ font-weight: 700; font-size: clamp(15px, 2vw, 17px); }}
+    p, span, div, label {{ color: var(--text); }}
 
-    /* TABELAS */
-    .stDataFrame {{ background: {BG_CARD}; border-radius: 12px; border: 1px solid {BORDER}; }}
-    .stDataFrame th {{
-        background: #1F1F1F !important;
-        color: {FLUXO_ORANGE} !important;
-        font-weight: 600 !important;
-        border-bottom: 1px solid {BORDER_LIGHT} !important;
-        text-transform: uppercase;
-        font-size: 12px !important;
-        letter-spacing: 0.04em;
+    /* ---------- HEADER DE PÁGINA ---------- */
+    .page-header {{
+        display: flex;
+        align-items: center;
+        gap: clamp(10px, 2vw, 16px);
+        margin: 0 0 6px 0;
+        flex-wrap: wrap;
     }}
-    .stDataFrame td {{ color: {TEXT_PRIMARY} !important; }}
-
-    /* MÉTRICAS DO STREAMLIT (fallback) */
-    div[data-testid="stMetric"] {{
-        background: {BG_CARD};
-        border: 1px solid {BORDER};
-        border-radius: 14px;
-        padding: 18px;
+    .page-header .icon {{
+        width: clamp(38px, 6vw, 46px);
+        height: clamp(38px, 6vw, 46px);
+        background: linear-gradient(135deg, var(--brand) 0%, {FLUXO_ORANGE_DARK} 100%);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: clamp(18px, 3vw, 22px);
+        color: #000;
+        box-shadow: 0 6px 18px rgba(247,148,29,0.28);
+        flex-shrink: 0;
     }}
-    div[data-testid="stMetric"] label {{ color: {TEXT_SECONDARY} !important; }}
-    div[data-testid="stMetric"] div {{ color: {TEXT_PRIMARY} !important; }}
-
-    /* SELECTBOX */
-    .stSelectbox label, .stMultiSelect label {{ color: {TEXT_PRIMARY} !important; font-size: 13px !important; font-weight: 500; }}
-    div[data-baseweb="select"] {{ background-color: {BG_CARD} !important; }}
-    div[data-baseweb="select"] > div {{
-        background-color: {BG_CARD} !important;
-        border-color: {BORDER_LIGHT} !important;
-        border-radius: 10px !important;
-        transition: border-color 0.15s;
+    .page-header h1 {{ margin: 0 !important; }}
+    .page-sub {{
+        color: var(--text-2);
+        margin: 4px 0 clamp(18px, 3vw, 28px) 0;
+        font-size: clamp(13px, 1.6vw, 15px);
+        padding-left: calc(clamp(38px, 6vw, 46px) + clamp(10px, 2vw, 16px));
     }}
-    div[data-baseweb="select"] > div:hover {{ border-color: {FLUXO_ORANGE} !important; }}
-    div[data-baseweb="select"] * {{ color: {TEXT_PRIMARY} !important; }}
-    div[data-baseweb="select"] svg {{ fill: {FLUXO_ORANGE} !important; }}
-
-    /* DROPDOWN ABERTO */
-    div[data-baseweb="popover"] * {{ background-color: {BG_CARD_ELEVATED} !important; }}
-    div[data-baseweb="popover"] > div {{ border: 1px solid {BORDER_LIGHT} !important; border-radius: 12px !important; overflow: hidden !important; }}
-    ul[data-baseweb="menu"] {{ background-color: {BG_CARD_ELEVATED} !important; padding: 6px !important; }}
-    ul[data-baseweb="menu"] li {{ background-color: {BG_CARD_ELEVATED} !important; color: {TEXT_PRIMARY} !important; border-radius: 8px !important; margin: 2px 0 !important; }}
-    ul[data-baseweb="menu"] li:hover {{ background-color: rgba(247,148,29,0.15) !important; color: #fff !important; }}
-    ul[data-baseweb="menu"] li[aria-selected="true"] {{ background-color: {FLUXO_ORANGE} !important; color: #000 !important; font-weight: 600; }}
-    div[role="option"] {{ background-color: {BG_CARD_ELEVATED} !important; color: {TEXT_PRIMARY} !important; }}
-    div[role="option"]:hover {{ background-color: rgba(247,148,29,0.15) !important; }}
-    div[role="option"] * {{ color: {TEXT_PRIMARY} !important; background-color: transparent !important; }}
-
-    /* SCROLLBAR */
-    ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
-    ::-webkit-scrollbar-track {{ background: {BG_BLACK}; }}
-    ::-webkit-scrollbar-thumb {{ background: {BORDER_LIGHT}; border-radius: 4px; }}
-    ::-webkit-scrollbar-thumb:hover {{ background: {FLUXO_ORANGE_DARK}; }}
-
-    .stSlider label {{ color: {TEXT_PRIMARY} !important; }}
-    .stSlider [role="slider"] {{ background-color: {FLUXO_ORANGE} !important; border-color: {FLUXO_ORANGE} !important; }}
-    .stSlider div[data-baseweb="slider"] > div > div > div {{ background: {FLUXO_ORANGE} !important; }}
-
-    /* RADIO HORIZONTAL — chips */
-    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label {{
-        background: {BG_CARD};
-        border: 1px solid {BORDER};
-        padding: 8px 14px;
-        border-radius: 999px;
-        margin-right: 6px;
-        transition: all 0.15s;
-    }}
-    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label:hover {{
-        border-color: {FLUXO_ORANGE};
-    }}
-    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label[data-checked="true"] {{
-        background: {FLUXO_ORANGE};
-        border-color: {FLUXO_ORANGE};
-        color: #000 !important;
-        font-weight: 600;
-    }}
-    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label[data-checked="true"] * {{
-        color: #000 !important;
+    @media (max-width: 640px) {{
+        .page-sub {{ padding-left: 0; }}
     }}
 
-    hr {{ border-color: {BORDER}; }}
+    /* ---------- SEÇÃO ---------- */
+    .section-title {{
+        color: var(--text);
+        font-size: clamp(15px, 1.9vw, 17px);
+        font-weight: 700;
+        margin: clamp(20px, 3vw, 28px) 0 clamp(10px, 1.5vw, 14px) 0;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
+        letter-spacing: -0.01em;
+        display: flex; align-items: center;
+    }}
+    .section-title::before {{
+        content: '';
+        display: inline-block;
+        width: 3px;
+        height: 16px;
+        background: linear-gradient(180deg, var(--brand), {FLUXO_ORANGE_DARK});
+        margin-right: 10px;
+        border-radius: 2px;
+        box-shadow: 0 0 8px rgba(247,148,29,0.5);
+    }}
 
-    /* CARD DE MÉTRICA CUSTOMIZADO */
+    /* ---------- METRIC CARD ---------- */
     .metric-card {{
-        background: linear-gradient(180deg, {BG_CARD} 0%, #101010 100%);
-        border: 1px solid {BORDER};
-        border-top: 3px solid {FLUXO_ORANGE};
-        border-radius: 14px;
-        padding: 22px 20px;
+        background: linear-gradient(180deg, var(--surface) 0%, #10101a 100%);
+        border: 1px solid var(--border);
+        border-top: 3px solid var(--brand);
+        border-radius: var(--radius);
+        padding: clamp(14px, 2.2vw, 22px) clamp(14px, 2vw, 20px);
         text-align: left;
-        transition: all 0.2s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         position: relative;
         overflow: hidden;
+        min-width: 0;
     }}
     .metric-card:hover {{
-        transform: translateY(-3px);
-        border-bottom-color: {BORDER_LIGHT};
-        border-left-color: {BORDER_LIGHT};
-        border-right-color: {BORDER_LIGHT};
-        box-shadow: 0 10px 30px rgba(0,0,0,0.4), 0 0 20px rgba(247,148,29,0.08);
+        transform: translateY(-2px);
+        border-color: var(--border-strong);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.45), 0 0 24px rgba(247,148,29,0.08);
     }}
     .metric-card .label {{
-        color: {TEXT_SECONDARY};
-        font-size: 11.5px;
+        color: var(--text-2);
+        font-size: clamp(10.5px, 1.3vw, 11.5px);
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         margin-bottom: 10px;
     }}
     .metric-card .value {{
-        color: {TEXT_PRIMARY};
-        font-size: 34px;
+        color: var(--text);
+        font-size: clamp(26px, 4vw, 34px);
         font-weight: 800;
         line-height: 1.1;
         margin-bottom: 6px;
         letter-spacing: -0.02em;
+        overflow-wrap: break-word;
     }}
-    .metric-card .sub {{
-        color: {TEXT_MUTED};
-        font-size: 12px;
-    }}
+    .metric-card .sub {{ color: var(--text-3); font-size: clamp(11px, 1.4vw, 12.5px); }}
 
-    .section-title {{
-        color: {TEXT_PRIMARY};
-        font-size: 17px;
-        font-weight: 700;
-        margin: 26px 0 14px 0;
-        padding-bottom: 10px;
-        border-bottom: 1px solid {BORDER};
-        letter-spacing: -0.01em;
-        display: flex;
-        align-items: center;
+    /* ---------- TABELAS ---------- */
+    .stDataFrame, [data-testid="stDataFrame"] {{
+        background: var(--surface);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        overflow: hidden;
     }}
-    .section-title::before {{
-        content: '';
-        display: inline-block;
-        width: 4px;
-        height: 18px;
-        background: {FLUXO_ORANGE};
-        margin-right: 10px;
-        border-radius: 2px;
+    .stDataFrame th, [data-testid="stDataFrame"] th {{
+        background: #1B1B26 !important;
+        color: var(--brand) !important;
+        font-weight: 600 !important;
+        border-bottom: 1px solid var(--border-strong) !important;
+        text-transform: uppercase;
+        font-size: clamp(11px, 1.3vw, 12px) !important;
+        letter-spacing: 0.05em;
     }}
+    /* text-shadow trick: garante legibilidade em qualquer background_gradient */
+    .stDataFrame td, [data-testid="stDataFrame"] td {{
+        color: var(--text) !important;
+        text-shadow: 0 0 3px rgba(0,0,0,0.55), 0 0 1px rgba(0,0,0,0.55);
+        font-size: clamp(12px, 1.4vw, 13.5px) !important;
+    }}
+    /* Scroll horizontal quando a tabela não cabe */
+    [data-testid="stDataFrame"] > div {{ overflow-x: auto !important; }}
 
+    /* ---------- STMETRIC (fallback do Streamlit) ---------- */
+    div[data-testid="stMetric"] {{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px;
+    }}
+    div[data-testid="stMetric"] label {{ color: var(--text-2) !important; }}
+    div[data-testid="stMetric"] div {{ color: var(--text) !important; }}
+
+    /* ---------- SELECTBOX ---------- */
+    .stSelectbox label, .stMultiSelect label {{ color: var(--text) !important; font-size: 13px !important; font-weight: 500; }}
+    div[data-baseweb="select"] {{ background-color: var(--surface) !important; }}
+    div[data-baseweb="select"] > div {{
+        background-color: var(--surface) !important;
+        border-color: var(--border-strong) !important;
+        border-radius: var(--radius-sm) !important;
+        transition: border-color 0.15s;
+        min-height: 42px;
+    }}
+    div[data-baseweb="select"] > div:hover {{ border-color: var(--brand) !important; }}
+    div[data-baseweb="select"] * {{ color: var(--text) !important; }}
+    div[data-baseweb="select"] svg {{ fill: var(--brand) !important; }}
+
+    /* ---------- DROPDOWN ABERTO ---------- */
+    div[data-baseweb="popover"] * {{ background-color: var(--surface-2) !important; }}
+    div[data-baseweb="popover"] > div {{ border: 1px solid var(--border-strong) !important; border-radius: 12px !important; overflow: hidden !important; }}
+    ul[data-baseweb="menu"] {{ background-color: var(--surface-2) !important; padding: 6px !important; }}
+    ul[data-baseweb="menu"] li {{ background-color: var(--surface-2) !important; color: var(--text) !important; border-radius: 8px !important; margin: 2px 0 !important; }}
+    ul[data-baseweb="menu"] li:hover {{ background-color: var(--brand-soft) !important; color: #fff !important; }}
+    ul[data-baseweb="menu"] li[aria-selected="true"] {{ background-color: var(--brand) !important; color: #000 !important; font-weight: 600; }}
+    div[role="option"] {{ background-color: var(--surface-2) !important; color: var(--text) !important; }}
+    div[role="option"]:hover {{ background-color: var(--brand-soft) !important; }}
+    div[role="option"] * {{ color: var(--text) !important; background-color: transparent !important; }}
+
+    /* ---------- SLIDER ---------- */
+    .stSlider label {{ color: var(--text) !important; }}
+    .stSlider [role="slider"] {{ background-color: var(--brand) !important; border-color: var(--brand) !important; }}
+    .stSlider div[data-baseweb="slider"] > div > div > div {{ background: var(--brand) !important; }}
+
+    /* ---------- RADIO HORIZONTAL (chips) ---------- */
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] {{
+        gap: 6px;
+        flex-wrap: wrap;
+    }}
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label {{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 9px 16px;
+        border-radius: 999px;
+        margin-right: 0;
+        transition: background 0.15s, border-color 0.15s;
+        min-height: 42px;
+        display: inline-flex; align-items: center;
+        font-size: 13.5px;
+    }}
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label:hover {{
+        border-color: var(--brand);
+    }}
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label[data-checked="true"] {{
+        background: var(--brand);
+        border-color: var(--brand);
+        color: #000 !important;
+        font-weight: 600;
+    }}
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label[data-checked="true"] * {{ color: #000 !important; }}
+
+    /* ---------- BUTTON ---------- */
+    .stButton > button {{
+        background: var(--brand);
+        color: #000;
+        border: none;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        padding: 12px 22px;
+        transition: transform 0.12s, background 0.12s;
+        min-height: 44px;
+    }}
+    .stButton > button:hover {{ background: {FLUXO_ORANGE_LIGHT}; transform: translateY(-1px); }}
+
+    /* ---------- INFO / TAG ---------- */
     .info-box {{
         background: rgba(247,148,29,0.08);
         border: 1px solid rgba(247,148,29,0.35);
-        border-left: 3px solid {FLUXO_ORANGE};
-        border-radius: 10px;
+        border-left: 3px solid var(--brand);
+        border-radius: var(--radius-sm);
         padding: 14px 18px;
         color: #FBD9A9;
         font-size: 13px;
         margin-bottom: 20px;
     }}
-
     .tag {{
         display: inline-block;
         padding: 4px 12px;
@@ -239,41 +332,85 @@ st.markdown(f"""
         letter-spacing: 0.05em;
     }}
 
-    /* HEADER PRINCIPAL DA PÁGINA */
-    .page-header {{
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 4px;
+    /* ---------- PLOTLY ---------- */
+    [data-testid="stPlotlyChart"] {{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 8px;
+        overflow: hidden;
     }}
-    .page-header .icon {{
-        width: 44px; height: 44px;
-        background: linear-gradient(135deg, {FLUXO_ORANGE} 0%, {FLUXO_ORANGE_DARK} 100%);
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 22px;
-        color: #000;
+    /* Modebar do Plotly discreto */
+    .js-plotly-plot .modebar {{
+        background: transparent !important;
+        opacity: 0.4;
+        transition: opacity 0.2s;
     }}
-    .page-header h1 {{
-        margin: 0 !important;
-        font-size: 30px;
-        color: {TEXT_PRIMARY} !important;
-    }}
-    .page-sub {{ color: {TEXT_SECONDARY}; margin: 4px 0 24px 60px; font-size: 14px; }}
+    .js-plotly-plot:hover .modebar {{ opacity: 1; }}
+    .js-plotly-plot .modebar-btn path {{ fill: var(--text-2) !important; }}
+    .js-plotly-plot .modebar-btn:hover path {{ fill: var(--brand) !important; }}
 
-    /* Botão default */
-    .stButton > button {{
-        background: {FLUXO_ORANGE};
-        color: #000;
-        border: none;
-        font-weight: 600;
-        border-radius: 10px;
-        padding: 10px 20px;
-        transition: all 0.15s;
+    /* ---------- SCROLLBAR ---------- */
+    ::-webkit-scrollbar {{ width: 10px; height: 10px; }}
+    ::-webkit-scrollbar-track {{ background: var(--bg); }}
+    ::-webkit-scrollbar-thumb {{ background: var(--border-strong); border-radius: 5px; border: 2px solid var(--bg); }}
+    ::-webkit-scrollbar-thumb:hover {{ background: {FLUXO_ORANGE_DARK}; }}
+
+    hr {{ border-color: var(--border); }}
+
+    /* Tab labels legíveis */
+    .stTabs [data-baseweb="tab-list"] {{ gap: 4px; border-bottom: 1px solid var(--border); }}
+    .stTabs [data-baseweb="tab"] {{
+        background: transparent;
+        border-radius: 8px 8px 0 0;
+        color: var(--text-2) !important;
+        padding: 10px 18px;
+        font-weight: 500;
     }}
-    .stButton > button:hover {{
-        background: {FLUXO_ORANGE_LIGHT};
-        transform: translateY(-1px);
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+        color: var(--brand) !important;
+        background: rgba(247,148,29,0.05);
+        border-bottom: 2px solid var(--brand);
+    }}
+
+    /* ==========================================================
+       RESPONSIVIDADE — tablet e mobile
+       ========================================================== */
+
+    /* Tablet: reduz gutters */
+    @media (max-width: 1024px) {{
+        [data-testid="stHorizontalBlock"] {{ gap: 12px !important; }}
+    }}
+
+    /* Mobile: colapsa TODAS as st.columns em stack vertical */
+    @media (max-width: 768px) {{
+        [data-testid="stHorizontalBlock"] {{
+            flex-direction: column !important;
+            gap: 12px !important;
+        }}
+        [data-testid="stColumn"], [data-testid="column"] {{
+            width: 100% !important;
+            min-width: 0 !important;
+            flex: 1 1 100% !important;
+        }}
+        /* Chips (radio horizontal) já quebram; adiciona padding extra pra facilitar tap */
+        div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label {{
+            padding: 11px 16px;
+            font-size: 13px;
+        }}
+        /* Plotly containers ganham altura menor pra caber sem scroll */
+        [data-testid="stPlotlyChart"] {{ padding: 4px; }}
+        /* Redução extra de gutter no container principal */
+        .block-container {{ padding-left: 0.75rem !important; padding-right: 0.75rem !important; }}
+        /* Metric cards com font menor */
+        .metric-card {{ padding: 14px 16px; }}
+    }}
+
+    /* Mobile pequeno */
+    @media (max-width: 480px) {{
+        h1 {{ font-size: 22px; }}
+        .metric-card .value {{ font-size: 26px; }}
+        .stTabs [data-baseweb="tab"] {{ padding: 8px 12px; font-size: 13px; }}
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -285,12 +422,59 @@ st.markdown(f"""
 PLOTLY_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(color=TEXT_PRIMARY, family="Inter"),
-    xaxis=dict(gridcolor=BORDER, linecolor=BORDER_LIGHT, tickcolor=TEXT_SECONDARY, tickfont=dict(color=TEXT_SECONDARY)),
-    yaxis=dict(gridcolor=BORDER, linecolor=BORDER_LIGHT, tickcolor=TEXT_SECONDARY, tickfont=dict(color=TEXT_SECONDARY)),
-    legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=TEXT_PRIMARY)),
-    margin=dict(t=40, b=40, l=20, r=20),
+    font=dict(color=TEXT_PRIMARY, family="Inter", size=13),
+    xaxis=dict(
+        gridcolor="rgba(58,58,72,0.35)",
+        linecolor=BORDER_LIGHT,
+        tickcolor=TEXT_SECONDARY,
+        tickfont=dict(color=TEXT_SECONDARY, size=12),
+        title_font=dict(color=TEXT_SECONDARY, size=12),
+        zerolinecolor=BORDER,
+    ),
+    yaxis=dict(
+        gridcolor="rgba(58,58,72,0.35)",
+        linecolor=BORDER_LIGHT,
+        tickcolor=TEXT_SECONDARY,
+        tickfont=dict(color=TEXT_SECONDARY, size=12),
+        title_font=dict(color=TEXT_SECONDARY, size=12),
+        zerolinecolor=BORDER,
+    ),
+    legend=dict(
+        bgcolor="rgba(20,20,28,0.6)",
+        bordercolor=BORDER,
+        borderwidth=1,
+        font=dict(color=TEXT_PRIMARY, size=12),
+    ),
+    margin=dict(t=32, b=44, l=48, r=20),
+    hoverlabel=dict(
+        bgcolor=BG_CARD_ELEVATED,
+        bordercolor=FLUXO_ORANGE,
+        font=dict(color=TEXT_PRIMARY, family="Inter", size=13),
+    ),
+    hovermode="closest",
 )
+
+# Config aplicada a todos os st.plotly_chart
+PLOTLY_CONFIG = {
+    "displayModeBar": False,   # remove a barra por padrão — reduz ruído
+    "responsive": True,        # redimensiona com o container
+    "scrollZoom": False,       # evita conflito com scroll da página em mobile
+    "doubleClick": "reset",
+    "showTips": False,
+    "displaylogo": False,
+}
+
+# Intercepta st.plotly_chart para aplicar PLOTLY_CONFIG em todas as chamadas
+# sem precisar modificar cada uma individualmente. Chamadas específicas ainda
+# podem sobrescrever passando config=... explicitamente.
+# Guard evita auto-empacotamento em re-runs do Streamlit (mesmo processo).
+if not getattr(st.plotly_chart, "_config_wrapped", False):
+    _original_plotly_chart = st.plotly_chart
+    def _plotly_chart_with_config(fig, *args, **kwargs):
+        kwargs.setdefault("config", PLOTLY_CONFIG)
+        return _original_plotly_chart(fig, *args, **kwargs)
+    _plotly_chart_with_config._config_wrapped = True
+    st.plotly_chart = _plotly_chart_with_config
 
 # Cores semânticas de resultado — mantém verde/vermelho para clareza; laranja é a cor de marca
 CORES = {
@@ -302,7 +486,7 @@ CORES = {
 
 # Escalas contínuas laranja para gráficos com cor por magnitude
 SCALE_ORANGE = ["#2A1608", "#7A4310", FLUXO_ORANGE, "#FFC97A"]
-SCALE_ORANGE_SOFT = ["#1a1a1a", "#4a2c10", FLUXO_ORANGE, FLUXO_ORANGE_LIGHT]
+SCALE_ORANGE_SOFT = ["#12121A", "#3A1F0C", "#7A4310", FLUXO_ORANGE_DARK]  # escala escura para heatmaps — texto branco fica legível em toda a extensão
 
 ORDEM_FASES = [
     "2. Contato aberto",
@@ -3800,7 +3984,7 @@ def pagina_motivo_perda(df):
             aspect="auto", text_auto=True,
         )
         fig_heat.update_layout(**PLOTLY_LAYOUT, height=460)
-        fig_heat.update_traces(textfont_color="#000")
+        fig_heat.update_traces(textfont_color="white", textfont_size=12)
         st.plotly_chart(fig_heat, use_container_width=True, key="mp_fase_heatmap")
 
     # -------------------------------------------------------
@@ -3820,7 +4004,7 @@ def pagina_motivo_perda(df):
                             labels={"x": "Coordenação", "y": "Motivo", "color": "Perdidos"},
                             aspect="auto", text_auto=True)
             fig.update_layout(**PLOTLY_LAYOUT, height=420)
-            fig.update_traces(textfont_color="#000")
+            fig.update_traces(textfont_color="white", textfont_size=12)
             st.plotly_chart(fig, use_container_width=True, key="mp_coord_heat")
 
             st.markdown("<div class='section-title'>Tabela — Motivos por Coordenação</div>", unsafe_allow_html=True)
@@ -3840,7 +4024,7 @@ def pagina_motivo_perda(df):
                             labels={"x": "Canal", "y": "Motivo", "color": "Perdidos"},
                             aspect="auto", text_auto=True)
             fig.update_layout(**PLOTLY_LAYOUT, height=460)
-            fig.update_traces(textfont_color="#000")
+            fig.update_traces(textfont_color="white", textfont_size=12)
             st.plotly_chart(fig, use_container_width=True, key="mp_canal_heat")
 
     with tab3:
@@ -3855,7 +4039,7 @@ def pagina_motivo_perda(df):
                             labels={"x": "Motivo", "y": "Responsável", "color": "Perdidos"},
                             aspect="auto", text_auto=True)
             fig.update_layout(**PLOTLY_LAYOUT, height=500)
-            fig.update_traces(textfont_color="#000")
+            fig.update_traces(textfont_color="white", textfont_size=12)
             st.plotly_chart(fig, use_container_width=True, key="mp_resp_heat")
 
     with tab4:
@@ -3866,7 +4050,7 @@ def pagina_motivo_perda(df):
                             labels={"x": "Tamanho", "y": "Motivo", "color": "Perdidos"},
                             aspect="auto", text_auto=True)
             fig.update_layout(**PLOTLY_LAYOUT, height=420)
-            fig.update_traces(textfont_color="#000")
+            fig.update_traces(textfont_color="white", textfont_size=12)
             st.plotly_chart(fig, use_container_width=True, key="mp_tam_heat")
 
     # -------------------------------------------------------
