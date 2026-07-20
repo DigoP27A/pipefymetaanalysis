@@ -3955,44 +3955,32 @@ def pagina_motivo_perda(df):
 # SIDEBAR + MAIN
 # ============================================================
 
-import base64
-
-def _fluxo_logo_html():
-    """Renderiza o logo da Fluxo. Prefere o arquivo assets/fluxo_logo.(png|jpg|svg);
-    se não existir, cai no SVG desenhado inline."""
+def _render_fluxo_logo():
+    """Desenha o logo da Fluxo na sidebar.
+    Usa o arquivo em assets/ se existir; caso contrário, desenha um SVG fallback.
+    Renderiza com st.image (arquivo) ou st.markdown isolado (SVG) para evitar
+    problemas de escaping ao misturar SVG dentro de HTML."""
     assets = BASE_DIR / "assets"
-    for nome, mime in [
-        ("fluxo_logo.png", "image/png"),
-        ("fluxo_logo.jpg", "image/jpeg"),
-        ("fluxo_logo.jpeg", "image/jpeg"),
-        ("fluxo_logo.webp", "image/webp"),
-        ("fluxo_logo.svg", "image/svg+xml"),
-    ]:
+    for nome in ["fluxo_logo.png", "fluxo_logo.jpg", "fluxo_logo.jpeg", "fluxo_logo.webp", "fluxo_logo.svg"]:
         arquivo = assets / nome
         if arquivo.exists():
-            b64 = base64.b64encode(arquivo.read_bytes()).decode("ascii")
-            return (
-                f'<img src="data:{mime};base64,{b64}" alt="Fluxo" '
-                f'style="width:100%;max-width:180px;height:auto;display:block;margin:0 auto;">'
-            )
-    # Fallback: SVG desenhado inline (caso o arquivo não esteja disponível)
-    return f"""
-    <svg viewBox="0 0 240 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:200px;height:auto;">
-      <g fill="none" stroke="{FLUXO_ORANGE}" stroke-width="5" stroke-linecap="round">
-        <path d="M20 14 L20 86"/>
-        <path d="M220 14 L220 86"/>
-        <path d="M20 14 L58 14"/>
-        <path d="M182 14 L220 14"/>
-        <path d="M20 86 L58 86"/>
-        <path d="M182 86 L220 86"/>
-      </g>
-      <path d="M60 22 Q120 -6 180 22" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
-      <path d="M60 78 Q120 106 180 78" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
-      <text x="120" y="63" font-family="Inter, sans-serif" font-weight="800" font-size="38" text-anchor="middle" fill="{TEXT_PRIMARY}" letter-spacing="-1">Fluxo</text>
-    </svg>
+            st.image(str(arquivo), width=180)
+            return
+    svg = f"""
+    <div style="text-align:center">
+      <svg viewBox="0 0 240 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:200px;height:auto;">
+        <g fill="none" stroke="{FLUXO_ORANGE}" stroke-width="5" stroke-linecap="round">
+          <path d="M20 14 L20 86"/><path d="M220 14 L220 86"/>
+          <path d="M20 14 L58 14"/><path d="M182 14 L220 14"/>
+          <path d="M20 86 L58 86"/><path d="M182 86 L220 86"/>
+        </g>
+        <path d="M60 22 Q120 -6 180 22" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
+        <path d="M60 78 Q120 106 180 78" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
+        <text x="120" y="63" font-family="Inter, sans-serif" font-weight="800" font-size="38" text-anchor="middle" fill="{TEXT_PRIMARY}" letter-spacing="-1">Fluxo</text>
+      </svg>
+    </div>
     """
-
-FLUXO_LOGO_SVG = _fluxo_logo_html()
+    st.markdown(svg, unsafe_allow_html=True)
 
 def main():
     if not CARDS_RAW_PATH.exists():
@@ -4002,13 +3990,16 @@ def main():
     df = carregar_dados()
 
     with st.sidebar:
-        st.markdown(f"""
-        <div style='text-align:center;padding:24px 8px 16px 8px'>
-            {FLUXO_LOGO_SVG}
-            <div style='font-size:11px;color:{TEXT_MUTED};letter-spacing:0.25em;text-transform:uppercase;margin-top:8px'>Consultoria</div>
-            <div style='font-size:13px;color:{FLUXO_ORANGE};margin-top:14px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase'>Dashboard CRM</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center;padding:24px 8px 4px 8px'></div>", unsafe_allow_html=True)
+        _render_fluxo_logo()
+        st.markdown(
+            f"<div style='text-align:center;font-size:11px;color:{TEXT_MUTED};"
+            f"letter-spacing:0.25em;text-transform:uppercase;margin-top:8px'>Consultoria</div>"
+            f"<div style='text-align:center;font-size:13px;color:{FLUXO_ORANGE};"
+            f"margin-top:14px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase'>"
+            f"Dashboard CRM</div>",
+            unsafe_allow_html=True,
+        )
 
         st.markdown(f"<hr style='border:none;height:1px;background:{BORDER};margin:8px 0 16px 0'>", unsafe_allow_html=True)
 
