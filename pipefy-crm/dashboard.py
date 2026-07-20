@@ -5,149 +5,320 @@ import plotly.graph_objects as go
 import json
 import os
 
-st.set_page_config(page_title="CRM Fluxo", layout="wide", page_icon="📊")
+st.set_page_config(page_title="Fluxo Consultoria — CRM", layout="wide", page_icon="🟧")
 
 # ============================================================
-# ESTILOS
+# TEMA — FLUXO (PRETO + LARANJA)
 # ============================================================
 
-st.markdown("""
+FLUXO_ORANGE = "#F7941D"
+FLUXO_ORANGE_LIGHT = "#FFB454"
+FLUXO_ORANGE_DARK = "#C67615"
+BG_BLACK = "#0A0A0A"
+BG_CARD = "#141414"
+BG_CARD_ELEVATED = "#1C1C1C"
+BORDER = "#262626"
+BORDER_LIGHT = "#3A3A3A"
+TEXT_PRIMARY = "#FAFAFA"
+TEXT_SECONDARY = "#A3A3A3"
+TEXT_MUTED = "#737373"
+
+st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    * { font-family: 'Inter', sans-serif; }
-    
-    .stApp { background-color: #0f172a; }
-    
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-        border-right: 1px solid #334155;
-    }
-    
-    section[data-testid="stSidebar"] * { color: #e2e8f0 !important; }
-    
-    .stRadio label { color: #e2e8f0 !important; font-size: 14px !important; }
-    
-    h1, h2, h3, h4, h5, h6, p, span, div { color: #f1f5f9; }
-    
-    .stDataFrame { background: #1e293b; border-radius: 12px; }
-    .stDataFrame th { background: #334155 !important; color: #f1f5f9 !important; }
-    .stDataFrame td { color: #e2e8f0 !important; }
-    
-    div[data-testid="stMetric"] {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 12px;
-        padding: 16px;
-    }
-    div[data-testid="stMetric"] label { color: #94a3b8 !important; }
-    div[data-testid="stMetric"] div { color: #f1f5f9 !important; }
-    
-    /* Selectbox - campo fechado */
-    .stSelectbox label { color: #e2e8f0 !important; font-size: 14px !important; }
-    div[data-baseweb="select"] { background-color: #1e293b !important; }
-    div[data-baseweb="select"] > div { background-color: #1e293b !important; border-color: #475569 !important; border-radius: 8px !important; }
-    div[data-baseweb="select"] * { color: #f1f5f9 !important; }
-    div[data-baseweb="select"] svg { fill: #94a3b8 !important; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-    /* Dropdown aberto - container */
-    div[data-baseweb="popover"] * { background-color: #1e293b !important; }
-    div[data-baseweb="popover"] > div { border: 1px solid #475569 !important; border-radius: 10px !important; overflow: hidden !important; }
-    
-    /* Itens da lista */
-    ul[data-baseweb="menu"] { background-color: #1e293b !important; padding: 4px !important; }
-    ul[data-baseweb="menu"] li { background-color: #1e293b !important; color: #f1f5f9 !important; border-radius: 6px !important; margin: 2px 0 !important; }
-    ul[data-baseweb="menu"] li:hover { background-color: #334155 !important; color: #ffffff !important; }
-    ul[data-baseweb="menu"] li[aria-selected="true"] { background-color: #2563eb !important; color: #ffffff !important; }
-    
-    /* Texto dentro dos itens */
-    div[role="option"] { background-color: #1e293b !important; color: #f1f5f9 !important; }
-    div[role="option"]:hover { background-color: #334155 !important; }
-    div[role="option"] * { color: #f1f5f9 !important; background-color: transparent !important; }
-    div[role="option"]:hover * { color: #ffffff !important; }
-    
-    /* Scrollbar do dropdown */
-    div[data-baseweb="popover"] ::-webkit-scrollbar { width: 6px; }
-    div[data-baseweb="popover"] ::-webkit-scrollbar-track { background: #1e293b; }
-    div[data-baseweb="popover"] ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-    
-    .stSlider label { color: #e2e8f0 !important; }
-    
-    hr { border-color: #334155; }
+    * {{ font-family: 'Inter', sans-serif; }}
+    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
 
-    .metric-card {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 16px;
-        padding: 24px;
-        text-align: center;
-        transition: transform 0.2s;
-    }
-    .metric-card:hover { transform: translateY(-2px); border-color: #475569; }
-    .metric-card .label { color: #94a3b8; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-    .metric-card .value { color: #f1f5f9; font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
-    .metric-card .sub { color: #64748b; font-size: 12px; }
+    .stApp {{
+        background:
+            radial-gradient(1200px 600px at 85% -10%, rgba(247,148,29,0.06), transparent 60%),
+            radial-gradient(900px 500px at -10% 100%, rgba(247,148,29,0.04), transparent 60%),
+            {BG_BLACK};
+    }}
 
-    .section-title {
-        color: #f1f5f9;
-        font-size: 18px;
+    /* SIDEBAR */
+    section[data-testid="stSidebar"] {{
+        background: linear-gradient(180deg, #0d0d0d 0%, {BG_BLACK} 100%);
+        border-right: 1px solid {BORDER};
+    }}
+    section[data-testid="stSidebar"] * {{ color: {TEXT_PRIMARY} !important; }}
+    section[data-testid="stSidebar"] .stRadio label {{ color: {TEXT_PRIMARY} !important; font-size: 14px !important; }}
+
+    /* Radio menu de navegação — highlight laranja no selecionado */
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label {{
+        padding: 10px 12px;
+        border-radius: 10px;
+        margin: 2px 0;
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+    }}
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
+        background: rgba(247,148,29,0.08);
+        border-color: rgba(247,148,29,0.25);
+    }}
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] {{
+        background: linear-gradient(90deg, rgba(247,148,29,0.18), rgba(247,148,29,0.05));
+        border-color: {FLUXO_ORANGE};
+        box-shadow: inset 3px 0 0 {FLUXO_ORANGE};
+    }}
+
+    /* TIPOGRAFIA */
+    h1, h2, h3, h4, h5, h6 {{ color: {TEXT_PRIMARY}; letter-spacing: -0.01em; }}
+    h1 {{ font-weight: 800; }}
+    p, span, div {{ color: {TEXT_PRIMARY}; }}
+
+    /* TABELAS */
+    .stDataFrame {{ background: {BG_CARD}; border-radius: 12px; border: 1px solid {BORDER}; }}
+    .stDataFrame th {{
+        background: #1F1F1F !important;
+        color: {FLUXO_ORANGE} !important;
+        font-weight: 600 !important;
+        border-bottom: 1px solid {BORDER_LIGHT} !important;
+        text-transform: uppercase;
+        font-size: 12px !important;
+        letter-spacing: 0.04em;
+    }}
+    .stDataFrame td {{ color: {TEXT_PRIMARY} !important; }}
+
+    /* MÉTRICAS DO STREAMLIT (fallback) */
+    div[data-testid="stMetric"] {{
+        background: {BG_CARD};
+        border: 1px solid {BORDER};
+        border-radius: 14px;
+        padding: 18px;
+    }}
+    div[data-testid="stMetric"] label {{ color: {TEXT_SECONDARY} !important; }}
+    div[data-testid="stMetric"] div {{ color: {TEXT_PRIMARY} !important; }}
+
+    /* SELECTBOX */
+    .stSelectbox label, .stMultiSelect label {{ color: {TEXT_PRIMARY} !important; font-size: 13px !important; font-weight: 500; }}
+    div[data-baseweb="select"] {{ background-color: {BG_CARD} !important; }}
+    div[data-baseweb="select"] > div {{
+        background-color: {BG_CARD} !important;
+        border-color: {BORDER_LIGHT} !important;
+        border-radius: 10px !important;
+        transition: border-color 0.15s;
+    }}
+    div[data-baseweb="select"] > div:hover {{ border-color: {FLUXO_ORANGE} !important; }}
+    div[data-baseweb="select"] * {{ color: {TEXT_PRIMARY} !important; }}
+    div[data-baseweb="select"] svg {{ fill: {FLUXO_ORANGE} !important; }}
+
+    /* DROPDOWN ABERTO */
+    div[data-baseweb="popover"] * {{ background-color: {BG_CARD_ELEVATED} !important; }}
+    div[data-baseweb="popover"] > div {{ border: 1px solid {BORDER_LIGHT} !important; border-radius: 12px !important; overflow: hidden !important; }}
+    ul[data-baseweb="menu"] {{ background-color: {BG_CARD_ELEVATED} !important; padding: 6px !important; }}
+    ul[data-baseweb="menu"] li {{ background-color: {BG_CARD_ELEVATED} !important; color: {TEXT_PRIMARY} !important; border-radius: 8px !important; margin: 2px 0 !important; }}
+    ul[data-baseweb="menu"] li:hover {{ background-color: rgba(247,148,29,0.15) !important; color: #fff !important; }}
+    ul[data-baseweb="menu"] li[aria-selected="true"] {{ background-color: {FLUXO_ORANGE} !important; color: #000 !important; font-weight: 600; }}
+    div[role="option"] {{ background-color: {BG_CARD_ELEVATED} !important; color: {TEXT_PRIMARY} !important; }}
+    div[role="option"]:hover {{ background-color: rgba(247,148,29,0.15) !important; }}
+    div[role="option"] * {{ color: {TEXT_PRIMARY} !important; background-color: transparent !important; }}
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
+    ::-webkit-scrollbar-track {{ background: {BG_BLACK}; }}
+    ::-webkit-scrollbar-thumb {{ background: {BORDER_LIGHT}; border-radius: 4px; }}
+    ::-webkit-scrollbar-thumb:hover {{ background: {FLUXO_ORANGE_DARK}; }}
+
+    .stSlider label {{ color: {TEXT_PRIMARY} !important; }}
+    .stSlider [role="slider"] {{ background-color: {FLUXO_ORANGE} !important; border-color: {FLUXO_ORANGE} !important; }}
+    .stSlider div[data-baseweb="slider"] > div > div > div {{ background: {FLUXO_ORANGE} !important; }}
+
+    /* RADIO HORIZONTAL — chips */
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label {{
+        background: {BG_CARD};
+        border: 1px solid {BORDER};
+        padding: 8px 14px;
+        border-radius: 999px;
+        margin-right: 6px;
+        transition: all 0.15s;
+    }}
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label:hover {{
+        border-color: {FLUXO_ORANGE};
+    }}
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label[data-checked="true"] {{
+        background: {FLUXO_ORANGE};
+        border-color: {FLUXO_ORANGE};
+        color: #000 !important;
         font-weight: 600;
-        margin: 24px 0 16px 0;
-        padding-bottom: 8px;
-        border-bottom: 2px solid #334155;
-    }
+    }}
+    div[data-testid="stHorizontalBlock"] div[role="radiogroup"] label[data-checked="true"] * {{
+        color: #000 !important;
+    }}
 
-    .info-box {
-        background: #1e3a5f;
-        border: 1px solid #2563eb;
+    hr {{ border-color: {BORDER}; }}
+
+    /* CARD DE MÉTRICA CUSTOMIZADO */
+    .metric-card {{
+        background: linear-gradient(180deg, {BG_CARD} 0%, #101010 100%);
+        border: 1px solid {BORDER};
+        border-top: 3px solid {FLUXO_ORANGE};
+        border-radius: 14px;
+        padding: 22px 20px;
+        text-align: left;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }}
+    .metric-card:hover {{
+        transform: translateY(-3px);
+        border-bottom-color: {BORDER_LIGHT};
+        border-left-color: {BORDER_LIGHT};
+        border-right-color: {BORDER_LIGHT};
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4), 0 0 20px rgba(247,148,29,0.08);
+    }}
+    .metric-card .label {{
+        color: {TEXT_SECONDARY};
+        font-size: 11.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 10px;
+    }}
+    .metric-card .value {{
+        color: {TEXT_PRIMARY};
+        font-size: 34px;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 6px;
+        letter-spacing: -0.02em;
+    }}
+    .metric-card .sub {{
+        color: {TEXT_MUTED};
+        font-size: 12px;
+    }}
+
+    .section-title {{
+        color: {TEXT_PRIMARY};
+        font-size: 17px;
+        font-weight: 700;
+        margin: 26px 0 14px 0;
+        padding-bottom: 10px;
+        border-bottom: 1px solid {BORDER};
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+    }}
+    .section-title::before {{
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 18px;
+        background: {FLUXO_ORANGE};
+        margin-right: 10px;
+        border-radius: 2px;
+    }}
+
+    .info-box {{
+        background: rgba(247,148,29,0.08);
+        border: 1px solid rgba(247,148,29,0.35);
+        border-left: 3px solid {FLUXO_ORANGE};
         border-radius: 10px;
         padding: 14px 18px;
-        color: #93c5fd;
+        color: #FBD9A9;
         font-size: 13px;
         margin-bottom: 20px;
-    }
+    }}
 
-    .tag {
+    .tag {{
         display: inline-block;
-        padding: 3px 10px;
-        border-radius: 20px;
-        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 11px;
         font-weight: 600;
         margin: 2px;
-    }
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }}
+
+    /* HEADER PRINCIPAL DA PÁGINA */
+    .page-header {{
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 4px;
+    }}
+    .page-header .icon {{
+        width: 44px; height: 44px;
+        background: linear-gradient(135deg, {FLUXO_ORANGE} 0%, {FLUXO_ORANGE_DARK} 100%);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 22px;
+        color: #000;
+    }}
+    .page-header h1 {{
+        margin: 0 !important;
+        font-size: 30px;
+        color: {TEXT_PRIMARY} !important;
+    }}
+    .page-sub {{ color: {TEXT_SECONDARY}; margin: 4px 0 24px 60px; font-size: 14px; }}
+
+    /* Botão default */
+    .stButton > button {{
+        background: {FLUXO_ORANGE};
+        color: #000;
+        border: none;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 10px 20px;
+        transition: all 0.15s;
+    }}
+    .stButton > button:hover {{
+        background: {FLUXO_ORANGE_LIGHT};
+        transform: translateY(-1px);
+    }}
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# LAYOUT PLOTLY BASE
+# LAYOUT PLOTLY BASE — TEMA FLUXO
 # ============================================================
 
 PLOTLY_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(color="#e2e8f0", family="Inter"),
-    xaxis=dict(gridcolor="#334155", linecolor="#475569", tickcolor="#94a3b8"),
-    yaxis=dict(gridcolor="#334155", linecolor="#475569", tickcolor="#94a3b8"),
-    legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color="#e2e8f0")),
+    font=dict(color=TEXT_PRIMARY, family="Inter"),
+    xaxis=dict(gridcolor=BORDER, linecolor=BORDER_LIGHT, tickcolor=TEXT_SECONDARY, tickfont=dict(color=TEXT_SECONDARY)),
+    yaxis=dict(gridcolor=BORDER, linecolor=BORDER_LIGHT, tickcolor=TEXT_SECONDARY, tickfont=dict(color=TEXT_SECONDARY)),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=TEXT_PRIMARY)),
     margin=dict(t=40, b=40, l=20, r=20),
 )
 
+# Cores semânticas de resultado — mantém verde/vermelho para clareza; laranja é a cor de marca
 CORES = {
     "Venda": "#22c55e",
-    "Perda": "#ef4444",
-    "Pausado": "#f59e0b",
-    "Em andamento": "#3b82f6"
+    "Perda": "#EF4444",
+    "Pausado": "#EAB308",
+    "Em andamento": FLUXO_ORANGE,
 }
+
+# Escalas contínuas laranja para gráficos com cor por magnitude
+SCALE_ORANGE = ["#2A1608", "#7A4310", FLUXO_ORANGE, "#FFC97A"]
+SCALE_ORANGE_SOFT = ["#1a1a1a", "#4a2c10", FLUXO_ORANGE, FLUXO_ORANGE_LIGHT]
 
 ORDEM_FASES = [
     "2. Contato aberto",
     "3. Pré-diagnóstico feito",
-    "4. Dignóstico feito",
+    "4. Diagnóstico feito",
     "5. Precificação/Aprovação em andamento",
     "6. Proposta comercial feita",
     "7. Follow-up",
     "Venda"
 ]
+
+# ============================================================
+# HELPERS DE UI
+# ============================================================
+
+def page_header(icon: str, titulo: str, subtitulo: str = ""):
+    st.markdown(f"""
+    <div class="page-header">
+        <div class="icon">{icon}</div>
+        <h1>{titulo}</h1>
+    </div>
+    <div class="page-sub">{subtitulo}</div>
+    """, unsafe_allow_html=True)
 
 # ============================================================
 # DADOS
@@ -205,8 +376,8 @@ def explodir_responsaveis(df):
 # ============================================================
 
 def pagina_visao_geral(df):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>📊 Visão Geral</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Panorama completo do CRM Fluxo</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>📊 Visão Geral</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Panorama completo do CRM Fluxo</p>", unsafe_allow_html=True)
 
     total = len(df)
     vendas = len(df[df["resultado"] == "Venda"])
@@ -217,11 +388,11 @@ def pagina_visao_geral(df):
 
     c1, c2, c3, c4, c5 = st.columns(5)
     cards = [
-        (c1, "Total de Leads", total, "todos os cards", "#3b82f6"),
+        (c1, "Total de Leads", total, "todos os cards", FLUXO_ORANGE),
         (c2, "Vendas", vendas, f"{taxa}% de conversão", "#22c55e"),
         (c3, "Perdidos", perdas, f"{round(perdas/total*100,1)}% do total", "#ef4444"),
         (c4, "Pausados", pausados, f"{round(pausados/total*100,1)}% do total", "#f59e0b"),
-        (c5, "Em Andamento", andamento, f"{round(andamento/total*100,1)}% do total", "#8b5cf6"),
+        (c5, "Em Andamento", andamento, f"{round(andamento/total*100,1)}% do total", FLUXO_ORANGE_LIGHT),
     ]
     for col, label, val, sub, cor in cards:
         with col:
@@ -251,17 +422,17 @@ def pagina_visao_geral(df):
         fases = df["fase_atual"].value_counts().reset_index()
         fases.columns = ["Fase", "Total"]
         fig = px.bar(fases, x="Total", y="Fase", orientation="h",
-                     color="Total", color_continuous_scale=["#1e3a5f", "#3b82f6", "#60a5fa"],
+                     color="Total", color_continuous_scale=SCALE_ORANGE,
                      text="Total")
         fig.update_traces(textfont_color="white", textposition="outside")
         fig.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
-        fig.update_yaxes(categoryorder="total ascending", gridcolor="#334155", tickfont=dict(color="#e2e8f0"))
+        fig.update_yaxes(categoryorder="total ascending", gridcolor="#262626", tickfont=dict(color="#FAFAFA"))
         st.plotly_chart(fig, use_container_width=True)
 
 
 def pagina_objecoes(df):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🚧 Análise de Objeções</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Como cada objeção impacta o resultado do lead</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🚧 Análise de Objeções</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Como cada objeção impacta o resultado do lead</p>", unsafe_allow_html=True)
 
     coluna_objecao = next((c for c in df.columns if "obje" in c.lower()), None)
     if not coluna_objecao:
@@ -341,11 +512,11 @@ def pagina_objecoes(df):
     # ANÁLISE DE LEADS QUALIFICADOS
     # -------------------------------------------------------
     st.markdown("---")
-    st.markdown("<h3 style='color:#f1f5f9'>🎯 Análise de Leads Qualificados</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Apenas cards que chegaram até Diagnóstico, Precificação/Aprovação ou Proposta Comercial — excluindo desqualificados precoces.</p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#FAFAFA'>🎯 Análise de Leads Qualificados</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Apenas cards que chegaram até Diagnóstico, Precificação/Aprovação ou Proposta Comercial — excluindo desqualificados precoces.</p>", unsafe_allow_html=True)
 
     FASES_QUALIFICADAS = [
-        "4. Dignóstico feito",
+        "4. Diagnóstico feito",
         "5. Precificação/Aprovação em andamento",
         "6. Proposta comercial feita",
         "7. Follow-up",
@@ -366,7 +537,7 @@ def pagina_objecoes(df):
         ]
         passou_diagnostico = any(
             f in fases_visitadas for f in [
-                "4. Dignóstico feito",
+                "4. Diagnóstico feito",
                 "5. Precificação/Aprovação em andamento",
                 "6. Proposta comercial feita",
                 "7. Follow-up",
@@ -439,8 +610,8 @@ def pagina_objecoes(df):
             use_container_width=True, height=320
         )
 def pagina_responsaveis(df):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>👤 Análise por Responsável</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Performance individual de cada membro do time</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>👤 Análise por Responsável</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Performance individual de cada membro do time</p>", unsafe_allow_html=True)
 
     df_exp = explodir_responsaveis(df)
     df_exp = df_exp[df_exp["responsavel"] != "Sem responsável"]
@@ -459,7 +630,7 @@ def pagina_responsaveis(df):
         min_cards = st.slider("Filtrar responsáveis com mínimo de cards:", 1, 30, 5)
     with c2:
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:#94a3b8;font-size:13px'>{len(analise[analise['Total'] >= min_cards])} pessoas exibidas</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#A3A3A3;font-size:13px'>{len(analise[analise['Total'] >= min_cards])} pessoas exibidas</p>", unsafe_allow_html=True)
 
     analise_f = analise[analise["Total"] >= min_cards]
 
@@ -527,14 +698,14 @@ def pagina_responsaveis(df):
 
     df_funil = pd.DataFrame(dados_funil)
     fig3 = px.funnel(df_funil, x="Total", y="Fase",
-                     color_discrete_sequence=["#3b82f6"])
+                     color_discrete_sequence=[FLUXO_ORANGE])
     fig3.update_layout(**PLOTLY_LAYOUT)
     st.plotly_chart(fig3, use_container_width=True)
 
 
 def pagina_tempo_fases(df_original):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>⏱️ Tempo entre Fases</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Tempo real que cada lead passou em cada etapa do funil</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>⏱️ Tempo entre Fases</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Tempo real que cada lead passou em cada etapa do funil</p>", unsafe_allow_html=True)
 
     # Carrega dados brutos para pegar phases_history
     with open("dados/cards_raw.json", encoding="utf-8") as f:
@@ -544,7 +715,7 @@ def pagina_tempo_fases(df_original):
         "1. Oportunidade",
         "2. Contato aberto",
         "3. Pré-diagnóstico feito",
-        "4. Dignóstico feito",
+        "4. Diagnóstico feito",
         "5. Precificação/Aprovação em andamento",
         "6. Proposta comercial feita",
         "7. Follow-up",
@@ -629,7 +800,7 @@ def pagina_tempo_fases(df_original):
     st.markdown("<div class='section-title'>Tempo Médio por Fase (dias)</div>", unsafe_allow_html=True)
     fig = px.bar(tempo_fase, x="Fase", y="Média (dias)",
                  color="Média (dias)",
-                 color_continuous_scale=["#1e3a5f", "#7c3aed", "#c4b5fd"],
+                 color_continuous_scale=SCALE_ORANGE,
                  text="Média (dias)",
                  category_orders={"Fase": ordem_limpas})
     fig.update_traces(textfont_color="white", textposition="outside")
@@ -642,7 +813,7 @@ def pagina_tempo_fases(df_original):
         st.markdown("<div class='section-title'>Distribuição do Tempo por Fase</div>", unsafe_allow_html=True)
         fig2 = px.box(df_filtrado, x="fase_limpa", y="duracao_dias",
                       category_orders={"fase_limpa": ordem_limpas},
-                      color_discrete_sequence=["#8b5cf6"],
+                      color_discrete_sequence=[FLUXO_ORANGE],
                       labels={"fase_limpa": "Fase", "duracao_dias": "Dias"})
         fig2.update_layout(**PLOTLY_LAYOUT, xaxis_tickangle=-20)
         st.plotly_chart(fig2, use_container_width=True)
@@ -683,14 +854,14 @@ def pagina_tempo_fases(df_original):
 # ============================================================
 
 def pagina_funil(df):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🔻 Funil de Conversão</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Taxa de mortalidade e gargalos por etapa do funil</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🔻 Funil de Conversão</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Taxa de mortalidade e gargalos por etapa do funil</p>", unsafe_allow_html=True)
 
     FASES_FUNIL = [
         "1. Oportunidade",
         "2. Contato aberto",
         "3. Pré-diagnóstico feito",
-        "4. Dignóstico feito",
+        "4. Diagnóstico feito",
         "5. Precificação/Aprovação em andamento",
         "6. Proposta comercial feita",
         "7. Follow-up",
@@ -819,7 +990,7 @@ def pagina_funil(df):
             name="Avançaram",
             x=df_mort_valido["Fase"],
             y=df_mort_valido["Total"] - df_mort_valido["Perda"],
-            marker_color="#3b82f6",
+            marker_color=FLUXO_ORANGE,
             text=(df_mort_valido["Total"] - df_mort_valido["Perda"]),
             textposition="inside",
             textfont=dict(color="white", size=12),
@@ -837,7 +1008,7 @@ def pagina_funil(df):
         ))
 
         fig.update_layout(**PLOTLY_LAYOUT, barmode="stack", xaxis_tickangle=-20)
-        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#e2e8f0")))
+        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#FAFAFA")))
         st.plotly_chart(fig, use_container_width=True)
 
     with c2:
@@ -858,7 +1029,7 @@ def pagina_funil(df):
 
     # Tabela de gargalos
     st.markdown("<div class='section-title'>📋 Resumo dos Gargalos</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Ordenado pelas fases com maior taxa de perda</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Ordenado pelas fases com maior taxa de perda</p>", unsafe_allow_html=True)
 
     tabela = df_mort_valido[[
         "Fase", "Total", "Venda", "Perda", "Pausado", "Em andamento",
@@ -879,8 +1050,8 @@ def pagina_funil(df):
 # ============================================================
 
 def pagina_coordenacoes(df):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🏢 Análise por Coordenação</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Objeções e conversão por coordenação e por responsável dentro de cada coordenação</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🏢 Análise por Coordenação</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Objeções e conversão por coordenação e por responsável dentro de cada coordenação</p>", unsafe_allow_html=True)
 
     with open("dados/cards_raw.json", encoding="utf-8") as f:
         cards_raw = json.load(f)
@@ -1053,7 +1224,7 @@ def pagina_coordenacoes(df):
 
         # Heatmap — responsável x objeção
         st.markdown("<div class='section-title'>🗺️ Mapa de Calor — Responsável × Objeção</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748b;font-size:13px'>Quantidade de vezes que cada responsável ouviu cada objeção</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#A3A3A3;font-size:13px'>Quantidade de vezes que cada responsável ouviu cada objeção</p>", unsafe_allow_html=True)
 
         heatmap_data = df_sel_unique[df_sel_unique["objecao"] != "Sem resposta"].groupby(
             ["responsavel", "objecao"]
@@ -1061,7 +1232,7 @@ def pagina_coordenacoes(df):
 
         fig3 = px.imshow(
             heatmap_data,
-            color_continuous_scale=["#0f172a", "#1e3a5f", "#3b82f6", "#93c5fd"],
+            color_continuous_scale=SCALE_ORANGE_SOFT,
             labels={"x": "Objeção", "y": "Responsável", "color": "Quantidade"},
             aspect="auto",
             text_auto=True,
@@ -1075,8 +1246,8 @@ def pagina_coordenacoes(df):
 # ============================================================
 
 def pagina_conversao(df):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>📈 Taxa de Conversão Real</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Conversão calculada apenas sobre leads que chegaram à Proposta Comercial</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>📈 Taxa de Conversão Real</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Conversão calculada apenas sobre leads que chegaram à Proposta Comercial</p>", unsafe_allow_html=True)
 
     with open("dados/cards_raw.json", encoding="utf-8") as f:
         cards_raw = json.load(f)
@@ -1205,11 +1376,11 @@ def pagina_conversao(df):
     st.markdown("<div class='section-title'>📊 Visão Geral — Leads que chegaram à Proposta</div>", unsafe_allow_html=True)
     c1, c2, c3, c4, c5 = st.columns(5)
     dados_kpi = [
-        (c1, "Total com Proposta", total, "chegaram até proposta", "#3b82f6"),
+        (c1, "Total com Proposta", total, "chegaram até proposta", FLUXO_ORANGE),
         (c2, "Vendas", vendas, f"{taxa}% de conversão", "#22c55e"),
         (c3, "Perdidos", perdas, f"{round(perdas/total*100,1) if total else 0}%", "#ef4444"),
         (c4, "Pausados", pausados, f"{round(pausados/total*100,1) if total else 0}%", "#f59e0b"),
-        (c5, "Em andamento", andamento, f"{round(andamento/total*100,1) if total else 0}%", "#8b5cf6"),
+        (c5, "Em andamento", andamento, f"{round(andamento/total*100,1) if total else 0}%", FLUXO_ORANGE_LIGHT),
     ]
     for col, label, val, sub, cor in dados_kpi:
         with col:
@@ -1237,11 +1408,11 @@ def pagina_conversao(df):
 
         c1, c2, c3, c4, c5 = st.columns(5)
         dados_kpi2 = [
-            (c1, "Total com Proposta", total, "neste ciclo", "#3b82f6"),
+            (c1, "Total com Proposta", total, "neste ciclo", FLUXO_ORANGE),
             (c2, "Vendas", vendas, f"{taxa}% de conversão", "#22c55e"),
             (c3, "Perdidos", perdas, f"{round(perdas/total*100,1) if total else 0}%", "#ef4444"),
             (c4, "Pausados", pausados, f"{round(pausados/total*100,1) if total else 0}%", "#f59e0b"),
-            (c5, "Em andamento", andamento, f"{round(andamento/total*100,1) if total else 0}%", "#8b5cf6"),
+            (c5, "Em andamento", andamento, f"{round(andamento/total*100,1) if total else 0}%", FLUXO_ORANGE_LIGHT),
         ]
         for col, label, val, sub, cor in dados_kpi2:
             with col:
@@ -1372,8 +1543,8 @@ def pagina_conversao(df):
 def pagina_diagnostico(df):
     from datetime import datetime, timedelta
 
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🔬 Diagnóstico</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Identificação de gargalos, padrões de perda e qualidade de qualificação</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🔬 Diagnóstico</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Identificação de gargalos, padrões de perda e qualidade de qualificação</p>", unsafe_allow_html=True)
 
     with open("dados/cards_raw.json", encoding="utf-8") as f:
         cards_raw = json.load(f)
@@ -1458,7 +1629,7 @@ def pagina_diagnostico(df):
         # Fase onde o card morreu (última fase do funil visitada)
         FASES_FUNIL = [
             "1. Oportunidade", "2. Contato aberto", "3. Pré-diagnóstico feito",
-            "4. Dignóstico feito", "5. Precificação/Aprovação em andamento",
+            "4. Diagnóstico feito", "5. Precificação/Aprovação em andamento",
             "6. Proposta comercial feita", "7. Follow-up",
         ]
         fases_visitadas = [
@@ -1537,7 +1708,7 @@ def pagina_diagnostico(df):
     st.markdown("<br>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     for col, label, val, sub, cor in [
-        (c1, "Total de Leads", total, "no filtro selecionado", "#3b82f6"),
+        (c1, "Total de Leads", total, "no filtro selecionado", FLUXO_ORANGE),
         (c2, "Vendas", vendas, f"{taxa}% de conversão", "#22c55e"),
         (c3, "Perdidos", perdas, f"{round(perdas/total*100,1) if total else 0}% do total", "#ef4444"),
         (c4, "Em aberto", total - vendas - perdas, "pausados + andamento", "#f59e0b"),
@@ -1555,8 +1726,8 @@ def pagina_diagnostico(df):
     # ANÁLISE 1 — LEADS PERDIDOS SEM OBJEÇÃO
     # ===============================================================
     st.markdown("---")
-    st.markdown("<h3 style='color:#f1f5f9'>🚨 Diagnóstico 1 — Perdidos sem dar objeção</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Leads que foram marcados como Perdido sem registrar nenhuma objeção. Indica possível falha de abordagem, qualificação incorreta ou ausência de follow-up.</p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#FAFAFA'>🚨 Diagnóstico 1 — Perdidos sem dar objeção</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Leads que foram marcados como Perdido sem registrar nenhuma objeção. Indica possível falha de abordagem, qualificação incorreta ou ausência de follow-up.</p>", unsafe_allow_html=True)
 
     df_perdidos = df_unique[df_unique["resultado"] == "Perda"].copy()
     # Para objeção, precisa do df expandido (não unique por card)
@@ -1584,9 +1755,9 @@ def pagina_diagnostico(df):
             <div class="sub">{round(com_obj/total_perd*100,1) if total_perd else 0}% dos perdidos</div>
         </div>""", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #64748b">
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #A3A3A3">
             <div class="label">Total de Perdidos</div>
-            <div class="value" style="color:#94a3b8">{total_perd}</div>
+            <div class="value" style="color:#A3A3A3">{total_perd}</div>
             <div class="sub">&nbsp;</div>
         </div>""", unsafe_allow_html=True)
 
@@ -1649,8 +1820,8 @@ def pagina_diagnostico(df):
     # ANÁLISE 2 — VELOCIDADE DE PRIMEIRO CONTATO
     # ===============================================================
     st.markdown("---")
-    st.markdown("<h3 style='color:#f1f5f9'>⚡ Diagnóstico 2 — Velocidade de primeiro contato</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Dias entre a chegada do lead e a abertura do contato. Leads contactados mais tarde tendem a converter menos.</p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#FAFAFA'>⚡ Diagnóstico 2 — Velocidade de primeiro contato</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Dias entre a chegada do lead e a abertura do contato. Leads contactados mais tarde tendem a converter menos.</p>", unsafe_allow_html=True)
 
     df_contato = df_unique[df_unique["dias_ate_contato"].notna()].copy()
 
@@ -1701,7 +1872,7 @@ def pagina_diagnostico(df):
             coord_contato = coord_contato.sort_values("Média (dias)", ascending=False)
             fig2 = px.bar(coord_contato, x="Coordenação", y="Média (dias)",
                           color="Média (dias)",
-                          color_continuous_scale=["#1e3a5f", "#7c3aed", "#c4b5fd"],
+                          color_continuous_scale=SCALE_ORANGE,
                           text="Média (dias)")
             fig2.update_traces(textfont_color="white", textposition="outside")
             fig2.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
@@ -1722,7 +1893,7 @@ def pagina_diagnostico(df):
             fig3 = px.bar(resp_contato.sort_values("Média (dias)"),
                           x="Média (dias)", y="Responsável", orientation="h",
                           color="Média (dias)",
-                          color_continuous_scale=["#1e3a5f", "#7c3aed", "#c4b5fd"],
+                          color_continuous_scale=SCALE_ORANGE,
                           text="Média (dias)",
                           labels={"Responsável": ""})
             fig3.update_traces(textfont_color="white")
@@ -1736,8 +1907,8 @@ def pagina_diagnostico(df):
     # ANÁLISE 3 — CANAL DE AQUISIÇÃO × QUALIDADE
     # ===============================================================
     st.markdown("---")
-    st.markdown("<h3 style='color:#f1f5f9'>📡 Diagnóstico 3 — Qualidade por canal de aquisição</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Canais que trazem leads de baixa qualidade inflam o funil sem gerar receita. Cruzamento com taxa de perdidos sem objeção revela canais que qualificam mal.</p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#FAFAFA'>📡 Diagnóstico 3 — Qualidade por canal de aquisição</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Canais que trazem leads de baixa qualidade inflam o funil sem gerar receita. Cruzamento com taxa de perdidos sem objeção revela canais que qualificam mal.</p>", unsafe_allow_html=True)
 
     df_canal = df_unique[df_unique["canal"].notna()].copy()
 
@@ -1785,7 +1956,7 @@ def pagina_diagnostico(df):
             st.plotly_chart(fig2, use_container_width=True, key="diag3_canal_taxa")
 
         st.markdown("<div class='section-title'>Tabela completa por canal — incluindo perdidos sem objeção</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748b;font-size:13px'>Canais com alta % de perdidos sem objeção indicam leads mal qualificados ou abordagem inadequada.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#A3A3A3;font-size:13px'>Canais com alta % de perdidos sem objeção indicam leads mal qualificados ou abordagem inadequada.</p>", unsafe_allow_html=True)
         st.dataframe(
             canal_analise.set_index("canal").style
                 .background_gradient(subset=["Taxa de Conversão (%)"], cmap="Greens")
@@ -1798,8 +1969,8 @@ def pagina_diagnostico(df):
     # ANÁLISE 4 — FASE DE MORTE × TEMPO NA FASE (SLA)
     # ===============================================================
     st.markdown("---")
-    st.markdown("<h3 style='color:#f1f5f9'>⏰ Diagnóstico 4 — Onde e quando os leads morrem</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Fase onde o lead parou × tempo que ficou ali antes de ser perdido. Fases com alto tempo médio e alta mortalidade são gargalos de processo.</p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#FAFAFA'>⏰ Diagnóstico 4 — Onde e quando os leads morrem</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Fase onde o lead parou × tempo que ficou ali antes de ser perdido. Fases com alto tempo médio e alta mortalidade são gargalos de processo.</p>", unsafe_allow_html=True)
 
     # Monta histórico de duração por fase para perdidos
     linhas_hist = []
@@ -1808,7 +1979,7 @@ def pagina_diagnostico(df):
 
     FASES_FUNIL_HIST = [
         "1. Oportunidade", "2. Contato aberto", "3. Pré-diagnóstico feito",
-        "4. Dignóstico feito", "5. Precificação/Aprovação em andamento",
+        "4. Diagnóstico feito", "5. Precificação/Aprovação em andamento",
         "6. Proposta comercial feita", "7. Follow-up",
     ]
 
@@ -1863,8 +2034,8 @@ def pagina_diagnostico(df):
     # ANÁLISE 5 — CANAL × TEMPO ATÉ CONTATO × PERDIDOS SEM OBJEÇÃO
     # ===============================================================
     st.markdown("---")
-    st.markdown("<h3 style='color:#f1f5f9'>🗺️ Diagnóstico 5 — Mapa de risco por canal e responsável</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Heatmap cruzando responsável × canal com volume de perdidos sem objeção. Concentrações revelam onde está o problema: no canal, na pessoa, ou na combinação dos dois.</p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#FAFAFA'>🗺️ Diagnóstico 5 — Mapa de risco por canal e responsável</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Heatmap cruzando responsável × canal com volume de perdidos sem objeção. Concentrações revelam onde está o problema: no canal, na pessoa, ou na combinação dos dois.</p>", unsafe_allow_html=True)
 
     df_heatmap = df_f[
         df_f["card_id"].isin(ids_sem_obj_set) &
@@ -1891,8 +2062,8 @@ def pagina_diagnostico(df):
     # ANÁLISE 6 — SERVIÇO SOLICITADO × CONVERSÃO
     # ===============================================================
     st.markdown("---")
-    st.markdown("<h3 style='color:#f1f5f9'>📋 Diagnóstico 6 — Conversão por tipo de serviço</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Quais serviços convertem mais? Serviços com baixa conversão podem indicar processo de diagnóstico inadequado ou precificação fora do mercado.</p>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#FAFAFA'>📋 Diagnóstico 6 — Conversão por tipo de serviço</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Quais serviços convertem mais? Serviços com baixa conversão podem indicar processo de diagnóstico inadequado ou precificação fora do mercado.</p>", unsafe_allow_html=True)
 
     df_servico = df_unique[df_unique["item_carta"].notna()].copy()
 
@@ -1933,8 +2104,8 @@ def pagina_diagnostico(df):
 # ============================================================
 
 def pagina_cross_selling(df):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🔀 Situação do Cross Selling</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Análise de leads qualificados por etapa do funil e quantos foram designados a mais de uma coordenação</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🔀 Situação do Cross Selling</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Análise de leads qualificados por etapa do funil e quantos foram designados a mais de uma coordenação</p>", unsafe_allow_html=True)
 
     with open("dados/cards_raw.json", encoding="utf-8") as f:
         cards_raw = json.load(f)
@@ -1949,7 +2120,7 @@ def pagina_cross_selling(df):
         return [x]
 
     GRUPOS = {
-        "Diagnóstico": ["4. Dignóstico feito"],
+        "Diagnóstico": ["4. Diagnóstico feito"],
         "Precificação/Aprovação": ["5. Precificação/Aprovação em andamento"],
         "Proposta": ["6. Proposta comercial feita", "7. Follow-up", "Venda"],
     }
@@ -2028,9 +2199,9 @@ def pagina_cross_selling(df):
             <div class="sub">{round(unica/total*100,1) if total else 0}% dos qualificados</div>
         </div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #64748b">
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #A3A3A3">
             <div class="label">Sem Coordenação</div>
-            <div class="value" style="color:#64748b">{sem}</div>
+            <div class="value" style="color:#A3A3A3">{sem}</div>
             <div class="sub">{round(sem/total*100,1) if total else 0}% dos qualificados</div>
         </div>""", unsafe_allow_html=True)
 
@@ -2042,8 +2213,8 @@ def pagina_cross_selling(df):
     ORDEM_GRUPOS = ["Diagnóstico", "Precificação/Aprovação", "Proposta"]
     CORES_GRUPOS = {
         "1 Coordenação": "#22c55e",
-        "Múltiplas Coordenações": "#8b5cf6",
-        "Sem coordenação": "#64748b",
+        "Múltiplas Coordenações": FLUXO_ORANGE_LIGHT,
+        "Sem coordenação": "#A3A3A3",
     }
 
     st.markdown("<div class='section-title'>📊 Distribuição por Etapa do Funil</div>", unsafe_allow_html=True)
@@ -2111,9 +2282,9 @@ def pagina_cross_selling(df):
             <div class="sub">{round(unica_g/total_g*100,1) if total_g else 0}%</div>
         </div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #64748b">
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #A3A3A3">
             <div class="label">Sem Coordenação</div>
-            <div class="value" style="color:#64748b">{sem_g}</div>
+            <div class="value" style="color:#A3A3A3">{sem_g}</div>
             <div class="sub">{round(sem_g/total_g*100,1) if total_g else 0}%</div>
         </div>""", unsafe_allow_html=True)
 
@@ -2129,7 +2300,7 @@ def pagina_cross_selling(df):
         else:
             fig2 = px.bar(combos, x="Total", y="Combinação", orientation="h",
                           color="Total",
-                          color_continuous_scale=["#2e1065", "#7c3aed", "#c4b5fd"],
+                          color_continuous_scale=SCALE_ORANGE,
                           text="Total",
                           labels={"Combinação": ""})
             fig2.update_traces(textfont_color="white", textposition="outside")
@@ -2184,8 +2355,8 @@ def pagina_cross_selling(df):
 def pagina_tamanho_empresa(df):
     from datetime import datetime
 
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🏭 Tamanho de Empresa</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Ticket médio, volume e conversão por tamanho de empresa</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🏭 Tamanho de Empresa</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Ticket médio, volume e conversão por tamanho de empresa</p>", unsafe_allow_html=True)
 
     with open("dados/cards_raw.json", encoding="utf-8") as f:
         cards_raw = json.load(f)
@@ -2331,9 +2502,9 @@ def pagina_tamanho_empresa(df):
     c1, c2, c3, c4 = st.columns(4)
     for col, label, val, sub, cor in [
         (c1, "Total de Vendas", total_vendas, "com tamanho informado", "#22c55e"),
-        (c2, "Ticket Médio Geral", ticket_medio_fmt, "média de todas as vendas", "#3b82f6"),
+        (c2, "Ticket Médio Geral", ticket_medio_fmt, "média de todas as vendas", FLUXO_ORANGE),
         (c3, "Receita Total", receita_fmt, "soma das propostas", "#f59e0b"),
-        (c4, "Maior Ticket Médio", maior_ticket_tam, "segmento com maior valor médio", "#8b5cf6"),
+        (c4, "Maior Ticket Médio", maior_ticket_tam, "segmento com maior valor médio", FLUXO_ORANGE_LIGHT),
     ]:
         with col:
             st.markdown(f"""<div class="metric-card" style="border-top:3px solid {cor}">
@@ -2406,7 +2577,7 @@ def pagina_tamanho_empresa(df):
     # -------------------------------------------------------
     st.markdown("---")
     st.markdown("<div class='section-title'>📊 Volume de Leads e Conversão por Tamanho</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Considera todos os leads com tamanho informado, não apenas os vendidos.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Considera todos os leads com tamanho informado, não apenas os vendidos.</p>", unsafe_allow_html=True)
 
     conv_tam = df_unique.groupby(["tamanho", "resultado"]).size().unstack(fill_value=0)
     for col in CORES:
@@ -2447,7 +2618,7 @@ def pagina_tamanho_empresa(df):
     # -------------------------------------------------------
     st.markdown("---")
     st.markdown("<div class='section-title'>🏢 Ticket Médio por Tamanho × Coordenação</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Apenas vendas. Revela qual coordenação performa melhor em cada segmento.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Apenas vendas. Revela qual coordenação performa melhor em cada segmento.</p>", unsafe_allow_html=True)
 
     linhas_coord = []
     for _, row in df_vendas.iterrows():
@@ -2484,7 +2655,7 @@ def pagina_tamanho_empresa(df):
     # -------------------------------------------------------
     st.markdown("---")
     st.markdown("<div class='section-title'>📦 Distribuição dos Valores por Tamanho</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Dispersão dos valores de proposta dentro de cada segmento. Caixas largas indicam alta variação de preço.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Dispersão dos valores de proposta dentro de cada segmento. Caixas largas indicam alta variação de preço.</p>", unsafe_allow_html=True)
 
     df_box = df_vendas[df_vendas["valor_proposta"].notna()].copy()
     if not df_box.empty:
@@ -2493,7 +2664,7 @@ def pagina_tamanho_empresa(df):
             x="tamanho",
             y="valor_proposta",
             color="tamanho",
-            color_discrete_sequence=["#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6"],
+            color_discrete_sequence=[FLUXO_ORANGE, "#22c55e", "#eab308", FLUXO_ORANGE_LIGHT],
             category_orders={"tamanho": ORDEM_TAMANHO},
             labels={"tamanho": "", "valor_proposta": "Valor da Proposta (R$)"},
             points="all",
@@ -2506,7 +2677,7 @@ def pagina_tamanho_empresa(df):
     # -------------------------------------------------------
     st.markdown("---")
     st.markdown("<div class='section-title'>📡 Canal de Aquisição × Tamanho de Empresa</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Quais canais trazem cada tipo de empresa para a venda.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Quais canais trazem cada tipo de empresa para a venda.</p>", unsafe_allow_html=True)
 
     canal_tam = df_vendas.groupby(["canal", "tamanho"]).size().unstack(fill_value=0)
     canal_tam = canal_tam.reindex(columns=[t for t in ORDEM_TAMANHO if t in canal_tam.columns])
@@ -2516,7 +2687,7 @@ def pagina_tamanho_empresa(df):
     if not canal_tam.empty:
         fig6 = px.imshow(
             canal_tam,
-            color_continuous_scale=["#0f172a", "#1e3a5f", "#3b82f6", "#93c5fd"],
+            color_continuous_scale=SCALE_ORANGE_SOFT,
             labels={"x": "Tamanho", "y": "Canal", "color": "Vendas"},
             aspect="auto",
             text_auto=True,
@@ -2564,8 +2735,8 @@ def pagina_tamanho_empresa(df):
 # ============================================================
 
 def pagina_vendas(df):
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>💰 Panorama de Vendas</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Visão completa sobre todas as vendas realizadas</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>💰 Panorama de Vendas</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Visão completa sobre todas as vendas realizadas</p>", unsafe_allow_html=True)
 
     with open("dados/cards_raw.json", encoding="utf-8") as f:
         cards_raw = json.load(f)
@@ -2712,9 +2883,9 @@ def pagina_vendas(df):
         </div>""", unsafe_allow_html=True)
     with c5:
         medio_fmt = f"R$ {valor_medio:,.0f}".replace(",", ".") if pd.notna(valor_medio) else "N/A"
-        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #64748b">
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #A3A3A3">
             <div class="label">Ticket Médio</div>
-            <div class="value" style="color:#94a3b8;font-size:22px">{medio_fmt}</div>
+            <div class="value" style="color:#A3A3A3;font-size:22px">{medio_fmt}</div>
             <div class="sub">valor médio por venda</div>
         </div>""", unsafe_allow_html=True)
 
@@ -2726,7 +2897,7 @@ def pagina_vendas(df):
     with c1:
         df_fid = pd.DataFrame({"Tipo": ["Fidelização", "Nova Aquisição"], "Total": [fidelizacoes, nao_fidelizacoes]})
         fig = px.pie(df_fid, names="Tipo", values="Total", hole=0.5,
-                     color="Tipo", color_discrete_map={"Fidelização": "#8b5cf6", "Nova Aquisição": "#3b82f6"})
+                     color="Tipo", color_discrete_map={"Fidelização": FLUXO_ORANGE_LIGHT, "Nova Aquisição": FLUXO_ORANGE})
         fig.update_traces(textfont_color="white", textfont_size=13)
         fig.update_layout(**PLOTLY_LAYOUT)
         st.plotly_chart(fig, use_container_width=True, key="vendas_fid_pizza")
@@ -2736,7 +2907,7 @@ def pagina_vendas(df):
         df_fid_canais.columns = ["Canal", "Total"]
         if not df_fid_canais.empty:
             fig2 = px.bar(df_fid_canais, x="Total", y="Canal", orientation="h",
-                          color="Total", color_continuous_scale=["#2e1065", "#7c3aed", "#c4b5fd"],
+                          color="Total", color_continuous_scale=SCALE_ORANGE,
                           text="Total", title="Tipos de Fidelização", labels={"Canal": ""})
             fig2.update_traces(textfont_color="white", textposition="outside")
             fig2.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False)
@@ -2795,7 +2966,7 @@ def pagina_vendas(df):
         df_melt_coord = coord_analise.melt(id_vars="coordenacao", value_vars=["Fidelizacoes", "Novas"],
                                             var_name="Tipo", value_name="Vendas")
         fig4 = px.bar(df_melt_coord, x="coordenacao", y="Vendas", color="Tipo",
-                      color_discrete_map={"Fidelizacoes": "#8b5cf6", "Novas": "#3b82f6"},
+                      color_discrete_map={"Fidelizacoes": FLUXO_ORANGE_LIGHT, "Novas": FLUXO_ORANGE},
                       barmode="stack", text="Vendas", labels={"coordenacao": ""})
         fig4.update_traces(textfont_color="white", textposition="inside")
         fig4.update_layout(**PLOTLY_LAYOUT)
@@ -2806,7 +2977,7 @@ def pagina_vendas(df):
     # Itens de Carta
     st.markdown("---")
     st.markdown("<div class='section-title'>📋 Itens de Carta — Vendas e Taxa de Conversão</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Quantidade de vendas por serviço e taxa de conversão proposta → venda</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Quantidade de vendas por serviço e taxa de conversão proposta → venda</p>", unsafe_allow_html=True)
 
     itens_proposta = {}
     itens_venda = {}
@@ -2911,8 +3082,8 @@ def pagina_vendas(df):
 def pagina_tamanho_empresa(df):
     from datetime import datetime
 
-    st.markdown("<h1 style='color:#f1f5f9;margin-bottom:4px'>🏭 Tamanho de Empresa</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;margin-bottom:24px'>Ticket médio, volume e conversão por tamanho de empresa</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#FAFAFA;margin-bottom:4px'>🏭 Tamanho de Empresa</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;margin-bottom:24px'>Ticket médio, volume e conversão por tamanho de empresa</p>", unsafe_allow_html=True)
 
     with open("dados/cards_raw.json", encoding="utf-8") as f:
         cards_raw = json.load(f)
@@ -3058,9 +3229,9 @@ def pagina_tamanho_empresa(df):
     c1, c2, c3, c4 = st.columns(4)
     for col, label, val, sub, cor in [
         (c1, "Total de Vendas", total_vendas, "com tamanho informado", "#22c55e"),
-        (c2, "Ticket Médio Geral", ticket_medio_fmt, "média de todas as vendas", "#3b82f6"),
+        (c2, "Ticket Médio Geral", ticket_medio_fmt, "média de todas as vendas", FLUXO_ORANGE),
         (c3, "Receita Total", receita_fmt, "soma das propostas", "#f59e0b"),
-        (c4, "Maior Ticket Médio", maior_ticket_tam, "segmento com maior valor médio", "#8b5cf6"),
+        (c4, "Maior Ticket Médio", maior_ticket_tam, "segmento com maior valor médio", FLUXO_ORANGE_LIGHT),
     ]:
         with col:
             st.markdown(f"""<div class="metric-card" style="border-top:3px solid {cor}">
@@ -3133,7 +3304,7 @@ def pagina_tamanho_empresa(df):
     # -------------------------------------------------------
     st.markdown("---")
     st.markdown("<div class='section-title'>📊 Volume de Leads e Conversão por Tamanho</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Considera todos os leads com tamanho informado, não apenas os vendidos.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Considera todos os leads com tamanho informado, não apenas os vendidos.</p>", unsafe_allow_html=True)
 
     conv_tam = df_unique.groupby(["tamanho", "resultado"]).size().unstack(fill_value=0)
     for col in CORES:
@@ -3174,7 +3345,7 @@ def pagina_tamanho_empresa(df):
     # -------------------------------------------------------
     st.markdown("---")
     st.markdown("<div class='section-title'>🏢 Ticket Médio por Tamanho × Coordenação</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Apenas vendas. Revela qual coordenação performa melhor em cada segmento.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Apenas vendas. Revela qual coordenação performa melhor em cada segmento.</p>", unsafe_allow_html=True)
 
     linhas_coord = []
     for _, row in df_vendas.iterrows():
@@ -3211,7 +3382,7 @@ def pagina_tamanho_empresa(df):
     # -------------------------------------------------------
     st.markdown("---")
     st.markdown("<div class='section-title'>📦 Distribuição dos Valores por Tamanho</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Dispersão dos valores de proposta dentro de cada segmento. Caixas largas indicam alta variação de preço.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Dispersão dos valores de proposta dentro de cada segmento. Caixas largas indicam alta variação de preço.</p>", unsafe_allow_html=True)
 
     df_box = df_vendas[df_vendas["valor_proposta"].notna()].copy()
     if not df_box.empty:
@@ -3220,7 +3391,7 @@ def pagina_tamanho_empresa(df):
             x="tamanho",
             y="valor_proposta",
             color="tamanho",
-            color_discrete_sequence=["#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6"],
+            color_discrete_sequence=[FLUXO_ORANGE, "#22c55e", "#eab308", FLUXO_ORANGE_LIGHT],
             category_orders={"tamanho": ORDEM_TAMANHO},
             labels={"tamanho": "", "valor_proposta": "Valor da Proposta (R$)"},
             points="all",
@@ -3233,7 +3404,7 @@ def pagina_tamanho_empresa(df):
     # -------------------------------------------------------
     st.markdown("---")
     st.markdown("<div class='section-title'>📡 Canal de Aquisição × Tamanho de Empresa</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b;font-size:13px'>Quais canais trazem cada tipo de empresa para a venda.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#A3A3A3;font-size:13px'>Quais canais trazem cada tipo de empresa para a venda.</p>", unsafe_allow_html=True)
 
     canal_tam = df_vendas.groupby(["canal", "tamanho"]).size().unstack(fill_value=0)
     canal_tam = canal_tam.reindex(columns=[t for t in ORDEM_TAMANHO if t in canal_tam.columns])
@@ -3243,7 +3414,7 @@ def pagina_tamanho_empresa(df):
     if not canal_tam.empty:
         fig6 = px.imshow(
             canal_tam,
-            color_continuous_scale=["#0f172a", "#1e3a5f", "#3b82f6", "#93c5fd"],
+            color_continuous_scale=SCALE_ORANGE_SOFT,
             labels={"x": "Tamanho", "y": "Canal", "color": "Vendas"},
             aspect="auto",
             text_auto=True,
@@ -3287,8 +3458,369 @@ def pagina_tamanho_empresa(df):
     )
 
 # ============================================================
+# PÁGINA — MOTIVO DA PERDA
+# ============================================================
+
+def pagina_motivo_perda(df):
+    st.markdown(f"""
+    <div class="page-header">
+        <div class="icon">💔</div>
+        <h1>Motivo da Perda</h1>
+    </div>
+    <div class="page-sub">Diagnóstico completo dos motivos que fizeram o lead ser perdido</div>
+    """, unsafe_allow_html=True)
+
+    with open("dados/cards_raw.json", encoding="utf-8") as f:
+        cards_raw = json.load(f)
+
+    COORDENACOES = ["ACE", "CCE", "MNP", "PRO", "QAB"]
+
+    def parse_lista(x):
+        if not x or isinstance(x, float): return []
+        if isinstance(x, str) and x.startswith("["):
+            try: return json.loads(x)
+            except: return [x]
+        return [x]
+
+    # Monta DataFrame apenas com perdidos
+    linhas = []
+    for card in cards_raw:
+        fase_atual = card.get("current_phase", {}).get("name") if card.get("current_phase") else None
+        if fase_atual != "Perdido":
+            continue
+
+        card_id = str(card.get("id"))
+        responsaveis = [a["name"].strip() for a in card.get("assignees", [])]
+
+        motivo = None
+        descricao_perda = None
+        coords = []
+        canal = None
+        objecoes = []
+        tamanho = None
+        valor_proposta = None
+        fases_visitadas = [ph.get("phase", {}).get("name") for ph in card.get("phases_history", [])]
+
+        for campo in card.get("fields", []):
+            label = campo.get("field", {}).get("label") or campo.get("name", "")
+            valor = campo.get("value")
+            if "motivo" in label.lower() and "perda" in label.lower():
+                motivo = valor
+            elif "descri" in label.lower() and "perda" in label.lower():
+                descricao_perda = valor
+            elif label == "Coordenação":
+                coords = [c.strip() for c in parse_lista(valor) if c.strip() in COORDENACOES]
+            elif label == "Canal de aquisição":
+                canal = valor
+            elif "obje" in label.lower():
+                objecoes = parse_lista(valor)
+            elif label == "Tamanho da empresa":
+                tamanho = valor
+            elif label == "Valor da proposta":
+                try:
+                    valor_proposta = float(str(valor).replace(".", "").replace(",", "."))
+                except:
+                    valor_proposta = None
+
+        motivos_list = parse_lista(motivo) if motivo else ["Sem motivo informado"]
+        if not motivos_list:
+            motivos_list = ["Sem motivo informado"]
+
+        # Fase onde o card morreu
+        FASES_FUNIL = [
+            "1. Oportunidade", "2. Contato aberto", "3. Pré-diagnóstico feito",
+            "4. Diagnóstico feito", "5. Precificação/Aprovação em andamento",
+            "6. Proposta comercial feita", "7. Follow-up",
+        ]
+        fases_no_funil = [f for f in fases_visitadas if f in FASES_FUNIL]
+        fase_morte = fases_no_funil[-1] if fases_no_funil else "Não visitou funil"
+        fase_morte_curta = fase_morte.split(". ")[-1] if ". " in fase_morte else fase_morte
+
+        chegou_proposta = any(f in fases_visitadas for f in ["6. Proposta comercial feita", "7. Follow-up"])
+
+        for m in motivos_list:
+            linhas.append({
+                "card_id": card_id,
+                "titulo": card.get("title"),
+                "motivo": m.strip() if isinstance(m, str) else "Sem motivo informado",
+                "descricao": descricao_perda,
+                "coordenacao": ", ".join(coords) if coords else "Sem coordenação",
+                "coords_list": coords,
+                "canal": canal if canal else "Não informado",
+                "responsavel": ", ".join(responsaveis) if responsaveis else "Sem responsável",
+                "resp_list": responsaveis if responsaveis else ["Sem responsável"],
+                "fase_morte": fase_morte_curta,
+                "chegou_proposta": chegou_proposta,
+                "tamanho": tamanho if tamanho else "Não informado",
+                "valor_proposta": valor_proposta,
+                "objecoes": objecoes,
+            })
+
+    df_perda = pd.DataFrame(linhas)
+
+    if df_perda.empty:
+        st.warning("Nenhum lead perdido encontrado.")
+        return
+
+    df_unique = df_perda.drop_duplicates(subset=["card_id"])
+    total_perdidos = df_unique["card_id"].nunique()
+    com_motivo = df_unique[df_unique["motivo"] != "Sem motivo informado"]["card_id"].nunique()
+    sem_motivo = total_perdidos - com_motivo
+    pct_documentado = round(com_motivo / total_perdidos * 100, 1) if total_perdidos else 0
+    motivo_mais_comum = (
+        df_perda[df_perda["motivo"] != "Sem motivo informado"]["motivo"].value_counts().idxmax()
+        if not df_perda[df_perda["motivo"] != "Sem motivo informado"].empty else "-"
+    )
+
+    # -------------------------------------------------------
+    # KPIs GERAIS
+    # -------------------------------------------------------
+    c1, c2, c3, c4 = st.columns(4)
+    for col, label, val, sub, cor in [
+        (c1, "Total de Perdidos", total_perdidos, "cards na fase Perdido", "#EF4444"),
+        (c2, "Com motivo documentado", com_motivo, f"{pct_documentado}% do total", FLUXO_ORANGE),
+        (c3, "Sem motivo", sem_motivo, f"{round(sem_motivo/total_perdidos*100,1) if total_perdidos else 0}% do total", "#EAB308"),
+        (c4, "Motivo mais frequente", motivo_mais_comum, "principal razão de perda", FLUXO_ORANGE_LIGHT),
+    ]:
+        with col:
+            font_size = "22px" if isinstance(val, str) and len(val) > 8 else "34px"
+            st.markdown(f"""<div class="metric-card" style="border-top: 3px solid {cor}">
+                <div class="label">{label}</div>
+                <div class="value" style="color:{cor};font-size:{font_size}">{val}</div>
+                <div class="sub">{sub}</div>
+            </div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # -------------------------------------------------------
+    # RANKING DE MOTIVOS
+    # -------------------------------------------------------
+    st.markdown("<div class='section-title'>Ranking dos Motivos de Perda</div>", unsafe_allow_html=True)
+
+    ranking = df_perda["motivo"].value_counts().reset_index()
+    ranking.columns = ["Motivo", "Total"]
+    ranking["% do total"] = (ranking["Total"] / ranking["Total"].sum() * 100).round(1)
+
+    c1, c2 = st.columns([1.4, 1])
+    with c1:
+        fig = px.bar(
+            ranking.sort_values("Total"),
+            x="Total", y="Motivo", orientation="h",
+            color="Total", color_continuous_scale=SCALE_ORANGE,
+            text="Total", labels={"Motivo": ""}
+        )
+        fig.update_traces(textfont_color=TEXT_PRIMARY, textposition="outside")
+        fig.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False, height=440)
+        st.plotly_chart(fig, use_container_width=True, key="mp_ranking")
+
+    with c2:
+        fig_pie = px.pie(
+            ranking, names="Motivo", values="Total", hole=0.55,
+            color_discrete_sequence=[
+                FLUXO_ORANGE, "#EF4444", "#EAB308", "#22c55e",
+                FLUXO_ORANGE_LIGHT, "#A855F7", "#0EA5E9", "#EC4899", "#94A3B8"
+            ]
+        )
+        fig_pie.update_traces(textfont_color="#000", textfont_size=12, textinfo="percent")
+        fig_pie.update_layout(**PLOTLY_LAYOUT, height=440,
+                              legend=dict(orientation="v", x=1.05, y=0.5,
+                                          font=dict(color=TEXT_PRIMARY, size=11)))
+        st.plotly_chart(fig_pie, use_container_width=True, key="mp_pie")
+
+    # -------------------------------------------------------
+    # MOTIVO × FASE ONDE MORREU
+    # -------------------------------------------------------
+    st.markdown("<div class='section-title'>Motivo × Fase onde o lead morreu</div>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{TEXT_SECONDARY};font-size:13px'>Mostra em qual etapa do funil cada motivo mais aparece — permite ver se o problema é qualificação (fases iniciais) ou proposta (fases finais).</p>", unsafe_allow_html=True)
+
+    matriz_fase = df_perda.groupby(["motivo", "fase_morte"]).size().unstack(fill_value=0)
+    ordem_fases_curtas = [f.split(". ")[-1] if ". " in f else f for f in [
+        "1. Oportunidade", "2. Contato aberto", "3. Pré-diagnóstico feito",
+        "4. Diagnóstico feito", "5. Precificação/Aprovação em andamento",
+        "6. Proposta comercial feita", "7. Follow-up",
+    ]]
+    ordem_presentes = [f for f in ordem_fases_curtas if f in matriz_fase.columns]
+    if ordem_presentes:
+        matriz_fase = matriz_fase[ordem_presentes]
+
+    if not matriz_fase.empty:
+        fig_heat = px.imshow(
+            matriz_fase,
+            color_continuous_scale=SCALE_ORANGE_SOFT,
+            labels={"x": "Fase", "y": "Motivo", "color": "Perdidos"},
+            aspect="auto", text_auto=True,
+        )
+        fig_heat.update_layout(**PLOTLY_LAYOUT, height=460)
+        fig_heat.update_traces(textfont_color="#000")
+        st.plotly_chart(fig_heat, use_container_width=True, key="mp_fase_heatmap")
+
+    # -------------------------------------------------------
+    # FILTROS E CRUZAMENTOS
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>Cruzamentos — Motivo por segmento</div>", unsafe_allow_html=True)
+
+    tab1, tab2, tab3, tab4 = st.tabs(["Coordenação", "Canal", "Responsável", "Tamanho de Empresa"])
+
+    with tab1:
+        df_coord = df_perda.explode("coords_list").dropna(subset=["coords_list"])
+        df_coord = df_coord[df_coord["coords_list"].isin(COORDENACOES)]
+        if not df_coord.empty:
+            matriz = df_coord.groupby(["motivo", "coords_list"]).size().unstack(fill_value=0)
+            fig = px.imshow(matriz, color_continuous_scale=SCALE_ORANGE_SOFT,
+                            labels={"x": "Coordenação", "y": "Motivo", "color": "Perdidos"},
+                            aspect="auto", text_auto=True)
+            fig.update_layout(**PLOTLY_LAYOUT, height=420)
+            fig.update_traces(textfont_color="#000")
+            st.plotly_chart(fig, use_container_width=True, key="mp_coord_heat")
+
+            st.markdown("<div class='section-title'>Tabela — Motivos por Coordenação</div>", unsafe_allow_html=True)
+            tabela_coord = matriz.copy()
+            tabela_coord["Total"] = tabela_coord.sum(axis=1)
+            tabela_coord = tabela_coord.sort_values("Total", ascending=False)
+            st.dataframe(
+                tabela_coord.style.background_gradient(cmap="Oranges"),
+                use_container_width=True, height=320
+            )
+
+    with tab2:
+        df_canal_x = df_perda[df_perda["canal"] != "Não informado"]
+        if not df_canal_x.empty:
+            matriz_canal = df_canal_x.groupby(["motivo", "canal"]).size().unstack(fill_value=0)
+            fig = px.imshow(matriz_canal, color_continuous_scale=SCALE_ORANGE_SOFT,
+                            labels={"x": "Canal", "y": "Motivo", "color": "Perdidos"},
+                            aspect="auto", text_auto=True)
+            fig.update_layout(**PLOTLY_LAYOUT, height=460)
+            fig.update_traces(textfont_color="#000")
+            st.plotly_chart(fig, use_container_width=True, key="mp_canal_heat")
+
+    with tab3:
+        df_resp = df_perda.explode("resp_list")
+        df_resp = df_resp[df_resp["resp_list"] != "Sem responsável"]
+        # Top responsáveis por volume de perdas
+        top_resp = df_resp.drop_duplicates(["card_id", "resp_list"])["resp_list"].value_counts().head(15).index.tolist()
+        df_resp = df_resp[df_resp["resp_list"].isin(top_resp)]
+        if not df_resp.empty:
+            matriz_resp = df_resp.groupby(["resp_list", "motivo"]).size().unstack(fill_value=0)
+            fig = px.imshow(matriz_resp, color_continuous_scale=SCALE_ORANGE_SOFT,
+                            labels={"x": "Motivo", "y": "Responsável", "color": "Perdidos"},
+                            aspect="auto", text_auto=True)
+            fig.update_layout(**PLOTLY_LAYOUT, height=500)
+            fig.update_traces(textfont_color="#000")
+            st.plotly_chart(fig, use_container_width=True, key="mp_resp_heat")
+
+    with tab4:
+        df_tam_x = df_perda[df_perda["tamanho"] != "Não informado"]
+        if not df_tam_x.empty:
+            matriz_tam = df_tam_x.groupby(["motivo", "tamanho"]).size().unstack(fill_value=0)
+            fig = px.imshow(matriz_tam, color_continuous_scale=SCALE_ORANGE_SOFT,
+                            labels={"x": "Tamanho", "y": "Motivo", "color": "Perdidos"},
+                            aspect="auto", text_auto=True)
+            fig.update_layout(**PLOTLY_LAYOUT, height=420)
+            fig.update_traces(textfont_color="#000")
+            st.plotly_chart(fig, use_container_width=True, key="mp_tam_heat")
+
+    # -------------------------------------------------------
+    # PERDAS COM PROPOSTA — MOTIVO DE ALTO VALOR
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>Perdas após envio de proposta</div>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{TEXT_SECONDARY};font-size:13px'>Leads que chegaram até proposta comercial ou follow-up e foram perdidos — perdas mais caras, pois consumiram esforço comercial completo.</p>", unsafe_allow_html=True)
+
+    df_pos_prop = df_perda[df_perda["chegou_proposta"]]
+    df_pos_prop_unique = df_pos_prop.drop_duplicates(subset=["card_id"])
+
+    total_pos = df_pos_prop_unique["card_id"].nunique()
+    valor_perdido = df_pos_prop_unique["valor_proposta"].sum()
+    valor_perdido_fmt = f"R$ {valor_perdido:,.0f}".replace(",", ".") if pd.notna(valor_perdido) and valor_perdido > 0 else "N/A"
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid #EF4444">
+            <div class="label">Perdidos após proposta</div>
+            <div class="value" style="color:#EF4444">{total_pos}</div>
+            <div class="sub">{round(total_pos/total_perdidos*100,1) if total_perdidos else 0}% do total de perdas</div>
+        </div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid {FLUXO_ORANGE}">
+            <div class="label">Valor não convertido</div>
+            <div class="value" style="color:{FLUXO_ORANGE};font-size:22px">{valor_perdido_fmt}</div>
+            <div class="sub">soma das propostas perdidas</div>
+        </div>""", unsafe_allow_html=True)
+    with c3:
+        motivo_pos_top = df_pos_prop["motivo"].value_counts().idxmax() if not df_pos_prop.empty else "-"
+        st.markdown(f"""<div class="metric-card" style="border-top:3px solid {FLUXO_ORANGE_LIGHT}">
+            <div class="label">Principal motivo pós-proposta</div>
+            <div class="value" style="color:{FLUXO_ORANGE_LIGHT};font-size:20px">{motivo_pos_top}</div>
+            <div class="sub">motivo mais comum após proposta</div>
+        </div>""", unsafe_allow_html=True)
+
+    if not df_pos_prop.empty:
+        st.markdown("<br>", unsafe_allow_html=True)
+        motivos_pos = df_pos_prop["motivo"].value_counts().reset_index()
+        motivos_pos.columns = ["Motivo", "Perdas pós-proposta"]
+        fig = px.bar(motivos_pos.sort_values("Perdas pós-proposta"),
+                     x="Perdas pós-proposta", y="Motivo", orientation="h",
+                     color="Perdas pós-proposta", color_continuous_scale=SCALE_ORANGE,
+                     text="Perdas pós-proposta", labels={"Motivo": ""})
+        fig.update_traces(textfont_color=TEXT_PRIMARY, textposition="outside")
+        fig.update_layout(**PLOTLY_LAYOUT, coloraxis_showscale=False, height=380)
+        st.plotly_chart(fig, use_container_width=True, key="mp_pos_prop")
+
+    # -------------------------------------------------------
+    # DETALHAMENTO POR MOTIVO
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.markdown("<div class='section-title'>Explorar leads por motivo</div>", unsafe_allow_html=True)
+
+    motivos_disp = ["Todos"] + sorted(df_perda["motivo"].unique().tolist())
+    motivo_sel = st.selectbox("Filtrar por motivo:", motivos_disp, key="mp_motivo_sel")
+
+    df_lista = df_perda.drop_duplicates(subset=["card_id"]).copy()
+    if motivo_sel != "Todos":
+        ids_com_motivo = df_perda[df_perda["motivo"] == motivo_sel]["card_id"].unique()
+        df_lista = df_lista[df_lista["card_id"].isin(ids_com_motivo)]
+
+    df_lista["Valor"] = df_lista["valor_proposta"].apply(
+        lambda x: f"R$ {x:,.0f}".replace(",", ".") if pd.notna(x) and x > 0 else "-"
+    )
+    df_lista["Descrição"] = df_lista["descricao"].fillna("").apply(
+        lambda x: (x[:80] + "…") if isinstance(x, str) and len(x) > 80 else (x or "-")
+    )
+
+    st.dataframe(
+        df_lista[["titulo", "motivo", "coordenacao", "canal", "fase_morte", "responsavel", "Valor", "Descrição"]]
+            .rename(columns={
+                "titulo": "Card",
+                "motivo": "Motivo",
+                "coordenacao": "Coordenação",
+                "canal": "Canal",
+                "fase_morte": "Morreu em",
+                "responsavel": "Responsável",
+            }),
+        use_container_width=True, height=460, hide_index=True
+    )
+
+
+# ============================================================
 # SIDEBAR + MAIN
 # ============================================================
+
+FLUXO_LOGO_SVG = f"""
+<svg viewBox="0 0 240 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:200px;height:auto;">
+  <g fill="none" stroke="{FLUXO_ORANGE}" stroke-width="5" stroke-linecap="round">
+    <path d="M20 14 L20 86"/>
+    <path d="M220 14 L220 86"/>
+    <path d="M20 14 L58 14"/>
+    <path d="M182 14 L220 14"/>
+    <path d="M20 86 L58 86"/>
+    <path d="M182 86 L220 86"/>
+  </g>
+  <path d="M60 22 Q120 -6 180 22" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <path d="M60 78 Q120 106 180 78" stroke="{FLUXO_ORANGE}" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <text x="120" y="63" font-family="Inter, sans-serif" font-weight="800" font-size="38" text-anchor="middle" fill="{TEXT_PRIMARY}" letter-spacing="-1">Fluxo</text>
+</svg>
+"""
 
 def main():
     if not os.path.exists("dados/cards_raw.json"):
@@ -3298,22 +3830,23 @@ def main():
     df = carregar_dados()
 
     with st.sidebar:
-        st.markdown("""
-        <div style='text-align:center;padding:20px 0 10px 0'>
-            <div style='font-size:32px'>📊</div>
-            <div style='font-size:20px;font-weight:700;color:#f1f5f9'>CRM Fluxo</div>
-            <div style='font-size:12px;color:#64748b'>Dashboard de Análise</div>
+        st.markdown(f"""
+        <div style='text-align:center;padding:24px 8px 16px 8px'>
+            {FLUXO_LOGO_SVG}
+            <div style='font-size:11px;color:{TEXT_MUTED};letter-spacing:0.25em;text-transform:uppercase;margin-top:8px'>Consultoria</div>
+            <div style='font-size:13px;color:{FLUXO_ORANGE};margin-top:14px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase'>Dashboard CRM</div>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("<hr style='border-color:#334155;margin:10px 0'>", unsafe_allow_html=True)
+        st.markdown(f"<hr style='border:none;height:1px;background:{BORDER};margin:8px 0 16px 0'>", unsafe_allow_html=True)
 
-        pagina = st.radio("", [
+        pagina = st.radio("Navegação", [
             "📊  Visão Geral",
             "💰  Vendas",
             "🏭  Tamanho de Empresa",
             "📈  Conversão Real",
             "🔻  Funil de Conversão",
+            "💔  Motivo da Perda",
             "🚧  Objeções",
             "👤  Responsáveis",
             "🏢  Coordenações",
@@ -3322,15 +3855,18 @@ def main():
             "⏱️  Tempo entre Fases"
         ], label_visibility="collapsed")
 
-        st.markdown("<hr style='border-color:#334155;margin:10px 0'>", unsafe_allow_html=True)
+        st.markdown(f"<hr style='border:none;height:1px;background:{BORDER};margin:16px 0'>", unsafe_allow_html=True)
 
         ultima = df["data_atualizacao"].max()
         st.markdown(f"""
-        <div style='padding:12px;background:#0f172a;border-radius:10px'>
-            <div style='color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.05em'>Total de cards</div>
-            <div style='color:#f1f5f9;font-size:22px;font-weight:700'>{len(df)}</div>
-            <div style='color:#64748b;font-size:11px;margin-top:8px'>Última atualização</div>
-            <div style='color:#94a3b8;font-size:12px'>{ultima.strftime('%d/%m/%Y') if pd.notna(ultima) else 'N/A'}</div>
+        <div style='padding:16px;background:{BG_CARD};border:1px solid {BORDER};border-radius:12px'>
+            <div style='color:{TEXT_MUTED};font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;font-weight:600'>Total de Cards</div>
+            <div style='color:{FLUXO_ORANGE};font-size:26px;font-weight:800;margin-top:4px'>{len(df):,}</div>
+            <div style='color:{TEXT_MUTED};font-size:10.5px;margin-top:12px;text-transform:uppercase;letter-spacing:0.1em;font-weight:600'>Última atualização</div>
+            <div style='color:{TEXT_SECONDARY};font-size:13px;margin-top:2px'>{ultima.strftime('%d/%m/%Y às %H:%M') if pd.notna(ultima) else 'N/A'}</div>
+        </div>
+        <div style='padding:8px;text-align:center;margin-top:16px'>
+            <div style='color:{TEXT_MUTED};font-size:10px;letter-spacing:0.15em'>FLUXO CONSULTORIA © 2026</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -3342,6 +3878,8 @@ def main():
         pagina_tamanho_empresa(df)
     elif "Funil" in pagina:
         pagina_funil(df)
+    elif "Motivo da Perda" in pagina:
+        pagina_motivo_perda(df)
     elif "Objeções" in pagina:
         pagina_objecoes(df)
     elif "Responsáveis" in pagina:
